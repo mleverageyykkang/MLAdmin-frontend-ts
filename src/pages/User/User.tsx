@@ -12,7 +12,7 @@ interface Department {
   uid: string;
   name: string;
 }
-const API_URL = "http://localhost:20220/user";
+const API_URL = "http://localhost:20220";
 const User: React.FC = () => {
   const [data, setData] = useState<IUser[]>([]);
   const [page, setPage] = useState<number>(1);
@@ -25,7 +25,7 @@ const User: React.FC = () => {
     const fetchData = async () => {
       try {
         const response = await axios.get(
-          `${API_URL}?page=${page}&pageSize=${pageSize}`
+          `${API_URL}/user?page=${page}&pageSize=${pageSize}`
         );
         setData(response.data.body);
         console.log(response.data.body);

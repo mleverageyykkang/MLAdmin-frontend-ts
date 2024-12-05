@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom"; // React Router v6 사용
 import logo from "../assets/img/ml_logo.png";
+import axios from "axios";
+
+const API_URL = "http://localhost:20220";
 
 function LoginPage() {
   const [uid, setUid] = useState(""); // uid의 타입은 TypeScript가 추론
@@ -12,12 +15,14 @@ function LoginPage() {
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
-      // 예제 API 호출 주석
-      // const response = await axios.post("/api/login", { uid, password });
+      const response = await axios.post(`${API_URL}/token`, { uid, password });
+      console.log(response.data);
       // localStorage.setItem("token", response.data.token);
       navigate("/dashboard"); // 로그인 성공 시 대시보드로 이동
     } catch (err) {
+      console.log(uid, password);
       setError("로그인 실패. 다시 시도해주세요."); // 에러 메시지 설정
+      alert(error);
     }
   };
 
@@ -68,8 +73,6 @@ function LoginPage() {
             회원가입
           </button>
         </form>
-        {error && <p style={{ color: "red" }}>{error}</p>}{" "}
-        {/* 에러 메시지 표시 */}
       </div>
     </div>
   );
