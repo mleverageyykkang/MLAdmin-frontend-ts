@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Dropdown } from "react-bootstrap";
 import axios from "axios";
-import IUser, { roleType } from "@root/common/models/user/IUser";
+import IUser, { roleType } from "../../common/models/user/IUser";
 
 interface Position {
   uid: string;

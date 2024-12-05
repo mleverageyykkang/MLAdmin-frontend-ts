@@ -2,7 +2,7 @@
   "compilerOptions": {
     "baseUrl": "./",
     "paths": {
-      "@root/*": ["./*"] // 루트 디렉토리 별칭
+      "@common/*": ["common/*"] // 루트 디렉토리 별칭
     },
     "target": "es5",
     "lib": ["dom", "dom.iterable", "esnext"],
