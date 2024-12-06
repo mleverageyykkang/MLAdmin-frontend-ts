@@ -4,11 +4,14 @@ import {
   Routes,
   useLocation,
 } from "react-router-dom";
-import LoginPage from "./pages/Login";
+import LoginPage from "./pages/Login/Login";
 import User from "./pages/User/User";
 import Dashboard from "./pages/Dashboard/Dashboard";
 import Sidebar from "./component/Sidebar/Sidebar";
 import HeaderNavbar from "./component/Navbar/HeaderNavbar";
+import AccountList from "./pages/AccountList/AccountList";
+import Commission from "./pages/Commission/Commission";
+import { AuthProvider } from "./providers/authProvider";
 
 const dashboardRoutes = [
   {
@@ -47,15 +50,21 @@ function Layout({ children }: { children: React.ReactNode }) {
   const isLoginPage = location.pathname === "/";
 
   return (
-    <div style={{ display: "flex" }}>
-      <div style={{ width: "13%" }}>
-        {!isLoginPage && <Sidebar routes={dashboardRoutes} />}
-      </div>
-      <div style={{ width: "87%" }}>
-        {!isLoginPage && <HeaderNavbar routes={dashboardRoutes} />}
-        <div className="p-3">{children}</div>
-      </div>
-    </div>
+    <>
+      {!isLoginPage ? (
+        <div style={{ display: "flex" }}>
+          <div style={{ width: "13%" }}>
+            <Sidebar routes={dashboardRoutes} />
+          </div>
+          <div style={{ width: "87%" }}>
+            <HeaderNavbar routes={dashboardRoutes} />
+            <div className="p-3">{children}</div>
+          </div>
+        </div>
+      ) : (
+        <div>{children}</div>
+      )}
+    </>
   );
 }
 
@@ -63,18 +72,20 @@ function App() {
   return (
     <div>
       {/* layout */}
-      <Layout>
-        <Routes>
-          <Route path="/" element={<LoginPage />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/user" element={<User />} />
-          <Route path="/sheet/1" element={<User />} />
-          <Route path="/sheet/2" element={<User />} />
-          <Route path="/sheet/3" element={<User />} />
-          <Route path="/sheet/4" element={<User />} />
-          <Route path="/tracking" element={<User />} />
-        </Routes>
-      </Layout>
+      <AuthProvider>
+        <Layout>
+          <Routes>
+            <Route path="/" element={<LoginPage />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/user" element={<User />} />
+            <Route path="/sheet/1" element={<Commission />} />
+            <Route path="/sheet/2" element={<AccountList />} />
+            <Route path="/sheet/3" element={<User />} />
+            <Route path="/sheet/4" element={<User />} />
+            <Route path="/tracking" element={<User />} />
+          </Routes>
+        </Layout>
+      </AuthProvider>
     </div>
   );
 }

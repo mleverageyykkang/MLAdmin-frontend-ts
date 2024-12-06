@@ -1,7 +1,8 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom"; // React Router v6 사용
-import logo from "../assets/img/ml_logo.png";
+import React, { useEffect, useState } from "react";
+import { useNavigate, NavLink } from "react-router-dom"; // React Router v6 사용
+import logo from "../../assets/img/ml_logo.png";
 import axios from "axios";
+import { useAuth } from "../../providers/authProvider";
 
 const API_URL = "http://localhost:20220";
 
@@ -9,20 +10,26 @@ function LoginPage() {
   const [uid, setUid] = useState(""); // uid의 타입은 TypeScript가 추론
   const [password, setPassword] = useState(""); // password의 타입도 추론
   const [error, setError] = useState<string | null>(null); // error는 string 또는 null
+  const { login } = useAuth();
 
   const navigate = useNavigate(); // React Router v6의 useNavigate 사용
 
+  //로그인 요청
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
     try {
-      const response = await axios.post(`${API_URL}/token`, { uid, password });
-      console.log(response.data);
-      // localStorage.setItem("token", response.data.token);
-      navigate("/dashboard"); // 로그인 성공 시 대시보드로 이동
-    } catch (err) {
-      console.log(uid, password);
-      setError("로그인 실패. 다시 시도해주세요."); // 에러 메시지 설정
-      alert(error);
+      const response = await axios.post("/token", { uid, password });
+      console.log(response);
+      if (response.status === 200) {
+        const data = await response;
+        login(data.data.token);
+        navigate("/dashboard"); // 로그인 성공 시 대시보드로 이동
+      }
+    } catch (err: any) {
+      if (err.response) {
+        alert(err.response.data.message || "로그인에 실패했습니다.");
+      }
     }
   };
 
@@ -65,13 +72,22 @@ function LoginPage() {
           >
             로그인
           </button>
-          <button
-            type="button"
-            className="w-75 bg-white py-2 rounded border border-primary"
-            onClick={() => navigate("/signup")} // 회원가입 버튼 클릭 시 이동
+          <div
+            className="d-flex justify-content-center mb-3"
+            style={{ gap: "25px" }}
           >
-            회원가입
-          </button>
+            <NavLink to="/signup" className="text-secondary">
+              회원가입
+            </NavLink>
+            <span className="text-secondary">|</span>
+            <NavLink to="/reset-id" className="text-secondary">
+              아이디 재설정
+            </NavLink>
+            <span className="text-secondary">|</span>
+            <NavLink to="/reset-password" className="text-secondary">
+              비밀번호 재설정
+            </NavLink>
+          </div>
         </form>
       </div>
     </div>

@@ -25,7 +25,7 @@ const User: React.FC = () => {
     const fetchData = async () => {
       try {
         const response = await axios.get(
-          `${API_URL}/user?page=${page}&pageSize=${pageSize}`
+          `/user?page=${page}&pageSize=${pageSize}`
         );
         setData(response.data.body);
         console.log(response.data.body);
@@ -35,6 +35,18 @@ const User: React.FC = () => {
     };
     fetchData();
   }, [page]);
+  // authorized 필요함. => 로그인 기능 구현 (department)
+  useEffect(() => {
+    const fetchDpt = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/department`);
+        console.log(response.data);
+      } catch (error) {
+        console.log("Failed to fetch departmnet :", error);
+      }
+    };
+    fetchDpt();
+  }, []);
   const positionSelect: Position[] = [
     {
       uid: "1",
@@ -154,40 +166,72 @@ const User: React.FC = () => {
         <div className="row ">
           <div className="col">
             <div className="card strpied-tabled-with-hover">
-              <div className="card-header d-flex justify-content-end">
-                <i
-                  className="nc-icon nc-zoom-split "
-                  style={{ fontSize: "20px", padding: "0.7rem 30px" }}
-                />
-                <Dropdown>
-                  <Dropdown.Toggle
-                    aria-expanded={false}
-                    aria-haspopup={true}
-                    data-toggle="dropdown"
-                    id="navbarDropdownMenuLink"
-                    variant="default"
-                    className="m-0 rounded border"
-                  >
-                    <i className="nc-icon nc-align-left-2 mr-1" />
-                    <span>정렬</span>
-                  </Dropdown.Toggle>
-                  <Dropdown.Menu aria-labelledby="navbarDropdownMenuLink">
-                    <Dropdown.Item href="#" onClick={(e) => e.preventDefault()}>
-                      이름
-                    </Dropdown.Item>
-                    <Dropdown.Item href="#" onClick={(e) => e.preventDefault()}>
-                      사번
-                    </Dropdown.Item>
-                  </Dropdown.Menu>
-                </Dropdown>
-                <button
-                  className="ml-2 border-0 bg-primary-subtle rounded"
-                  onClick={addNewRow}
-                >
-                  등록
-                </button>
-              </div>
               <div className="card-body table-full-width px-0 table-responsive">
+                <div className="d-flex justify-content-end mb-2 mx-2">
+                  <i
+                    className="nc-icon nc-zoom-split "
+                    style={{ fontSize: "20px", padding: "0.7rem 30px" }}
+                  />
+                  <Dropdown>
+                    <Dropdown.Toggle
+                      aria-expanded={false}
+                      aria-haspopup={true}
+                      data-toggle="dropdown"
+                      id="navbarDropdownMenuLink"
+                      variant="default"
+                      className="m-0 rounded border"
+                    >
+                      <i className="nc-icon nc-align-left-2 mr-1" />
+                      <span>정렬</span>
+                    </Dropdown.Toggle>
+                    <Dropdown.Menu aria-labelledby="navbarDropdownMenuLink">
+                      <Dropdown.Item
+                        href="#"
+                        onClick={(e) => e.preventDefault()}
+                      >
+                        이름
+                      </Dropdown.Item>
+                      <Dropdown.Item
+                        href="#"
+                        onClick={(e) => e.preventDefault()}
+                      >
+                        사번
+                      </Dropdown.Item>
+                    </Dropdown.Menu>
+                  </Dropdown>
+                  <button
+                    className="border rounded border-0 bg-primary text-white mr-2"
+                    onClick={() => {
+                      if (window.confirm("저장하시겠습니까?")) {
+                        // handleSaveClick(row.uid);
+                      } else return false;
+                    }}
+                  >
+                    저장
+                  </button>
+                  <button
+                    className="border rounded border-muted bg-white "
+                    onClick={handleCancelClick}
+                  >
+                    취소
+                  </button>
+                  <button
+                    className="border rounded border-0 text-white bg-danger"
+                    onClick={() => {
+                      if (window.confirm("정말 삭제하시겠습니까?")) {
+                        // handleDeleteClick(row.uid);
+                      } else return false;
+                    }}
+                  >
+                    삭제
+                  </button>
+                  <button
+                    className="ml-2 border-0 bg-primary-subtle rounded"
+                    onClick={addNewRow}
+                  >
+                    등록
+                  </button>
+                </div>
                 <table className="table-hover table table-striped text-nowrap text-center">
                   <thead>
                     <tr>
@@ -201,8 +245,6 @@ const User: React.FC = () => {
                       <th>회사 이메일</th>
                       <th>개인 이메일</th>
                       <th>MBTI</th>
-                      <th>관리</th>
-                      <th>삭제</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -307,24 +349,6 @@ const User: React.FC = () => {
                                   onChange={(e) => handleChange(e, "mbti")}
                                 />
                               </td>
-                              <td>
-                                <button
-                                  className="border rounded border-0 bg-primary text-white mr-2"
-                                  onClick={() => {
-                                    if (window.confirm("저장하시겠습니까?")) {
-                                      handleSaveClick(row.uid);
-                                    } else return false;
-                                  }}
-                                >
-                                  저장
-                                </button>
-                                <button
-                                  className="border rounded border-muted bg-white "
-                                  onClick={handleCancelClick}
-                                >
-                                  취소
-                                </button>
-                              </td>
                             </>
                           ) : (
                             <>
@@ -350,28 +374,8 @@ const User: React.FC = () => {
                               <td>{row.companyEmail}</td>
                               <td>{row.personalEmail}</td>
                               <td>{row.mbti}</td>
-                              <td>
-                                <button
-                                  className="border rounded border-0 bg-primary text-white"
-                                  onClick={() => handleEditClick(row.uid)}
-                                >
-                                  수정
-                                </button>
-                              </td>
                             </>
                           )}
-                          <td>
-                            <button
-                              className="border rounded border-0 text-white bg-danger"
-                              onClick={() => {
-                                if (window.confirm("정말 삭제하시겠습니까?")) {
-                                  handleDeleteClick(row.uid);
-                                } else return false;
-                              }}
-                            >
-                              삭제
-                            </button>
-                          </td>
                         </tr>
                       ))}
                   </tbody>
