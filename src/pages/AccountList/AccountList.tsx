@@ -38,17 +38,14 @@ const AccountList: React.FC = () => {
   useEffect(() => {
     const getAccounts = async () => {
       try {
-        const response = await axios.get("/sheet/account", {
-          withCredentials: true,
-        });
+        const response = await axios.get("/sheet/account");
         setAccountData(response.data.body);
-        console.log(accountData);
       } catch (error) {
         console.log("Failed to fetch data:", error);
       }
     };
     getAccounts();
-  }, []);
+  }, [accountData]);
 
   if (userRole === null) {
     return <div>Loading...</div>; // 사용자 역할 로딩 중

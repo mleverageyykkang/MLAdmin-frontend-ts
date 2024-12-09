@@ -1,142 +1,137 @@
 import React, { useEffect, useState } from "react";
-import { Dropdown } from "react-bootstrap";
 import axios from "axios";
 import IUser, { roleType } from "../../common/models/user/IUser";
+import IDepartment from "common/models/department/IDepartment";
+import IPosition from "common/models/position/IPosition";
+import Pagination from "src/component/Pagination";
+import styles from "./User.module.scss";
 
-interface Position {
-  uid: string;
-  name: string;
-}
-
-interface Department {
-  uid: string;
-  name: string;
-}
-const API_URL = "http://localhost:20220";
 const User: React.FC = () => {
   const [data, setData] = useState<IUser[]>([]);
-  const [page, setPage] = useState<number>(1);
-  const pageSize = 10;
-  const currentPageData = data.slice((page - 1) * pageSize, page * pageSize);
+  const [departmentSelect, setDepartmentSelect] = useState<IDepartment[]>([]);
+  const [positionSelect, setPositionSelect] = useState<IPosition[]>([]);
   const [editingRow, setEditingRow] = useState<string | null>(null);
   const [editedRow, setEditedRow] = useState<Partial<IUser>>({});
-  const [newRow, setNewRow] = useState<Partial<IUser> | null>(null);
+  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+  const [sortOption, setSortOption] = useState<string>("이름");
+  const [page, setPage] = useState<number>(1);
+  const pageSize = 10;
+  const currenPageData = data.slice((page - 1) * pageSize, page * pageSize);
+
+  //user 데이터 긁어오기
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await axios.get(
-          `/user?page=${page}&pageSize=${pageSize}`
-        );
+        const response = await axios.get("/user");
         setData(response.data.body);
-        console.log(response.data.body);
       } catch (error) {
         console.error("Failed to fetch data:", error);
       }
     };
     fetchData();
-  }, [page]);
-  // authorized 필요함. => 로그인 기능 구현 (department)
+  }, []);
+  //부서 데이터 긁어오기
   useEffect(() => {
     const fetchDpt = async () => {
       try {
-        const response = await axios.get(`${API_URL}/department`);
-        console.log(response.data);
+        const response = await axios.get("/department");
+        setDepartmentSelect(response.data.body);
       } catch (error) {
-        console.log("Failed to fetch departmnet :", error);
+        console.error("Failed to fetch departments:", error);
       }
     };
     fetchDpt();
   }, []);
-  const positionSelect: Position[] = [
-    {
-      uid: "1",
-      name: "대표",
-    },
-    {
-      uid: "2",
-      name: "실장",
-    },
-    {
-      uid: "3",
-      name: "부장",
-    },
-    {
-      uid: "4",
-      name: "차장",
-    },
-    {
-      uid: "5",
-      name: "대리",
-    },
-    {
-      uid: "6",
-      name: "사원",
-    },
-  ];
-  const departmentSelect: Department[] = [
-    {
-      uid: "1",
-      name: "본부",
-    },
-    {
-      uid: "2",
-      name: "경영관리",
-    },
-    {
-      uid: "3",
-      name: "개발",
-    },
-    {
-      uid: "4",
-      name: "마케팅",
-    },
-  ];
-
+  //직책 데이터 긁어오기
+  useEffect(() => {
+    const fetchPos = async () => {
+      try {
+        const response = await axios.get("/position");
+        setPositionSelect(response.data.body);
+      } catch (error) {
+        console.error("Failed to fetch positions:", error);
+      }
+    };
+    fetchPos();
+  }, []);
+  // 데이터행 수정
   const handleEditClick = (id: string) => {
     setEditingRow(id);
     const rowToEdit = data.find((row) => row.uid === id);
     setEditedRow({ ...rowToEdit });
   };
-
-  const handleSaveClick = (id: string) => {
-    if (newRow && editingRow === newRow.uid) {
-      setNewRow(null);
-    }
-    setData((prevData) =>
-      prevData.map((row) =>
-        row.uid === id ? ({ ...editedRow } as IUser) : row
-      )
-    );
-    setEditingRow(null);
+  // 데이터행 수정 후 저장
+  const handleSaveClick = () => {
+    if (window.confirm("저장하시겠습니까?")) {
+      setData((prevData) => 
+        prevData.map((row) =>
+          row.uid === editingRow ? ({ ...editedRow } as IUser) : row
+        )
+      );
+      setEditingRow(null);
+      setEditedRow({});
+    } else return false;
   };
-
+  // 데이터행 수정 후 취소
+  const handleCancelClick = () => {
+    // 수정 중인 행이 새로 추가된 행이고 이를 취소하면 삭제
+    if (
+      editingRow &&
+      data.find((row) => row.uid === editingRow && row.name === "")
+    ) {
+      setData((prevData) => {
+        const updatedData = prevData.filter((row) => row.uid !== editingRow);
+        // 새로 추가한 행의 페이지에 데이터가 없으면 이전 페이지로 이동
+        const currentPageDataCount = updatedData.slice(
+          (page - 1) * pageSize,
+          page * pageSize
+        ).length;
+        if (currentPageDataCount === 0 && page > 1) {
+          setPage(page - 1);
+        }
+        return updatedData;
+      });
+    }
+    setEditingRow(null);
+    setEditedRow({});
+  };
+  // 멀티데이터행 삭제
+  const handleDeleteClick = () => {
+    if (selectedRows.size === 0) {
+      alert("삭제할 항목을 선택해주세요."); // 선택된 행이 없을 때 경고 메시지
+      return;
+    }
+    if (window.confirm("정말 삭제하시겠습니까?")) {
+      setData((prevData) =>
+        prevData.filter((row) => !selectedRows.has(row.uid))
+      );
+      setSelectedRows(new Set()); // 선택된 행 초기화
+    } else return false;
+  };
+  // 체크박스 선택
+  const handleCheckboxChange = (id: string) => {
+    setSelectedRows((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+  // 수정사항에 대한 onChange
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
     field: keyof IUser
   ) => {
     setEditedRow({ ...editedRow, [field]: e.target.value });
   };
-
-  const handleCancelClick = () => {
-    // 수정 중인 행이 새로 추가된 행이고 이를 취소하면 삭제
-    if (newRow && editingRow === newRow.uid) {
-      setData((prevData) => prevData.filter((row) => row.uid !== newRow.uid));
-      setNewRow(null);
-    }
-    setEditingRow(null);
-    setEditedRow({});
-  };
-  const handleDeleteClick = (id: string) => {
-    setData((prevData) => {
-      return prevData.filter((row) => row.uid !== id);
-    });
-  };
-  const addNewRow = () => {
-    const newRow: IUser = {
-      uid: (data.length + 1).toString(), //추가 후 보냄?
-      role: roleType.USER,
+  // 새로운 행 추가
+  const handleAddNew = () => {
+    const newUser: IUser = {
+      uid: (data.length + 1).toString(),
       name: "",
-      password: "",
       code: data.length + 1,
       birthday: "",
       positionUuid: "",
@@ -149,249 +144,238 @@ const User: React.FC = () => {
       isResigned: false,
       createdAt: new Date(),
       updatedAt: new Date(),
+      role: roleType.USER,
     };
     setData((prevData) => {
-      const updatedData = [...prevData, newRow];
-      const newPage = Math.ceil(updatedData.length / pageSize);
-      setPage(newPage); // 해당 페이지로 이동
-      return updatedData;
+      const updateData = [...prevData, newUser]; // 새 데이터를 맨 뒤에 추가
+      const newPage = Math.ceil(updateData.length / pageSize);
+      setPage(newPage); //새 데이터가 있는 페이지로 이동
+      return updateData;
     });
-    setNewRow(newRow);
-    setEditingRow(newRow.uid);
-    setEditedRow(newRow);
+    setEditingRow(newUser.uid);
+    setEditedRow(newUser);
   };
+
   return (
-    <>
-      <div className="container-fluid">
-        <div className="row ">
-          <div className="col">
-            <div className="card strpied-tabled-with-hover">
-              <div className="card-body table-full-width px-0 table-responsive">
-                <div className="d-flex justify-content-end mb-2 mx-2">
-                  <i
-                    className="nc-icon nc-zoom-split "
-                    style={{ fontSize: "20px", padding: "0.7rem 30px" }}
-                  />
-                  <Dropdown>
-                    <Dropdown.Toggle
-                      aria-expanded={false}
-                      aria-haspopup={true}
-                      data-toggle="dropdown"
-                      id="navbarDropdownMenuLink"
-                      variant="default"
-                      className="m-0 rounded border"
-                    >
-                      <i className="nc-icon nc-align-left-2 mr-1" />
-                      <span>정렬</span>
-                    </Dropdown.Toggle>
-                    <Dropdown.Menu aria-labelledby="navbarDropdownMenuLink">
-                      <Dropdown.Item
-                        href="#"
-                        onClick={(e) => e.preventDefault()}
-                      >
-                        이름
-                      </Dropdown.Item>
-                      <Dropdown.Item
-                        href="#"
-                        onClick={(e) => e.preventDefault()}
-                      >
-                        사번
-                      </Dropdown.Item>
-                    </Dropdown.Menu>
-                  </Dropdown>
-                  <button
-                    className="border rounded border-0 bg-primary text-white mr-2"
-                    onClick={() => {
-                      if (window.confirm("저장하시겠습니까?")) {
-                        // handleSaveClick(row.uid);
-                      } else return false;
-                    }}
-                  >
-                    저장
-                  </button>
-                  <button
-                    className="border rounded border-muted bg-white "
-                    onClick={handleCancelClick}
-                  >
-                    취소
-                  </button>
-                  <button
-                    className="border rounded border-0 text-white bg-danger"
-                    onClick={() => {
-                      if (window.confirm("정말 삭제하시겠습니까?")) {
-                        // handleDeleteClick(row.uid);
-                      } else return false;
-                    }}
-                  >
-                    삭제
-                  </button>
-                  <button
-                    className="ml-2 border-0 bg-primary-subtle rounded"
-                    onClick={addNewRow}
-                  >
-                    등록
-                  </button>
-                </div>
-                <table className="table-hover table table-striped text-nowrap text-center">
-                  <thead>
-                    <tr>
-                      <th>이름</th>
-                      <th>코드</th>
-                      <th>생년월일</th>
-                      <th>직책</th>
-                      <th>부서</th>
-                      <th>연락처</th>
-                      <th>직통번호</th>
-                      <th>회사 이메일</th>
-                      <th>개인 이메일</th>
-                      <th>MBTI</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentPageData &&
-                      currentPageData.map((row) => (
-                        <tr key={row.uid}>
-                          {editingRow === row.uid ? (
-                            <>
-                              <td>
-                                <input
-                                  type="text"
-                                  value={editedRow.name}
-                                  onChange={(e) => handleChange(e, "name")}
-                                />
-                              </td>
-                              <td>
-                                <input
-                                  type="text"
-                                  value={editedRow.code}
-                                  onChange={(e) => handleChange(e, "code")}
-                                />
-                              </td>
-                              <td>
-                                <input
-                                  type="text"
-                                  value={editedRow.birthday}
-                                  onChange={(e) => handleChange(e, "birthday")}
-                                />
-                              </td>
-                              <td>
-                                <select
-                                  value={editedRow.positionUuid || ""}
-                                  onChange={(e) =>
-                                    handleChange(e, "positionUuid")
-                                  }
-                                >
-                                  <option value="직책 선택" disabled hidden>
-                                    직책 선택
-                                  </option>
-                                  {positionSelect.map((pos) => (
-                                    <option key={pos.uid} value={pos.uid}>
-                                      {pos.name}
-                                    </option>
-                                  ))}
-                                </select>
-                              </td>
-                              <td>
-                                <select
-                                  value={editedRow.departmentUuid || ""}
-                                  onChange={(e) =>
-                                    handleChange(e, "departmentUuid")
-                                  }
-                                >
-                                  <option value="부서 선택" disabled hidden>
-                                    부서 선택
-                                  </option>
-                                  {departmentSelect.map((dpt) => (
-                                    <option key={dpt.uid} value={dpt.uid}>
-                                      {dpt.name}
-                                    </option>
-                                  ))}
-                                </select>
-                              </td>
-                              <td>
-                                <input
-                                  type="text"
-                                  value={editedRow.phone}
-                                  onChange={(e) => handleChange(e, "phone")}
-                                />
-                              </td>
-                              <td>
-                                <input
-                                  type="text"
-                                  value={editedRow.directPhone}
-                                  onChange={(e) =>
-                                    handleChange(e, "directPhone")
-                                  }
-                                />
-                              </td>
-                              <td>
-                                <input
-                                  type="text"
-                                  value={editedRow.companyEmail}
-                                  onChange={(e) =>
-                                    handleChange(e, "companyEmail")
-                                  }
-                                />
-                              </td>
-                              <td>
-                                <input
-                                  type="text"
-                                  value={editedRow.personalEmail}
-                                  onChange={(e) =>
-                                    handleChange(e, "personalEmail")
-                                  }
-                                />
-                              </td>
-                              <td>
-                                <input
-                                  type="text"
-                                  value={editedRow.mbti}
-                                  onChange={(e) => handleChange(e, "mbti")}
-                                />
-                              </td>
-                            </>
-                          ) : (
-                            <>
-                              <td>{row.name}</td>
-                              <td>{row.code}</td>
-                              <td>{row.birthday}</td>
-                              <td>
-                                {
-                                  positionSelect.find(
-                                    (pos) => pos.uid == row.positionUuid
-                                  )?.name
-                                }
-                              </td>
-                              <td>
-                                {
-                                  departmentSelect.find(
-                                    (dpt) => dpt.uid == row.departmentUuid
-                                  )?.name
-                                }
-                              </td>
-                              <td>{row.phone}</td>
-                              <td>{row.directPhone}</td>
-                              <td>{row.companyEmail}</td>
-                              <td>{row.personalEmail}</td>
-                              <td>{row.mbti}</td>
-                            </>
-                          )}
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-        {/* <Pagination
-          page={page}
-          totalCount={data.length}
-          pageSize={pageSize}
-          setPage={setPage}
-        /> */}
+    <div className="container-fluid">
+      {/* 테이블 */}
+      {/* 테이블 위의 버튼 */}
+      <div className="d-flex justify-content-end mb-2">
+        {editingRow || selectedRows.size > 0 ? (
+          <>
+            {editingRow && (
+              <>
+                <button
+                  className="btn btn-primary mr-2"
+                  onClick={handleSaveClick}
+                >
+                  저장
+                </button>
+                <button
+                  className="btn btn-secondary mr-2"
+                  onClick={handleCancelClick}
+                >
+                  취소
+                </button>
+                <button className="btn btn-danger" onClick={handleDeleteClick}>
+                  삭제
+                </button>
+              </>
+            )}
+          </>
+        ) : null}
+        <select className="form-select w-auto mx-2 rounded" value={sortOption}>
+          <option value="이름">이름</option>
+          <option value="코드">코드</option>
+        </select>
+        {/* 등록 버튼 */}
+        <button className="btn btn-success" onClick={handleAddNew}>
+          등록
+        </button>
       </div>
-    </>
+      <div className="card">
+        <div className="card-body table-full-width px-0 table-responsive">
+          <table className={`table-hover table text-center ${styles.table}`}>
+            <thead>
+              <tr>
+                <th>
+                  <input
+                    type="checkbox"
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedRows(new Set(data.map((row) => row.uid)));
+                      } else {
+                        setSelectedRows(new Set());
+                      }
+                    }}
+                    checked={selectedRows.size === data.length}
+                  />
+                </th>
+                <th>이름</th>
+                <th>코드</th>
+                <th>생년월일</th>
+                <th>직책</th>
+                <th>부서</th>
+                <th>연락처</th>
+                <th>직통번호</th>
+                <th>회사 이메일</th>
+                <th>개인 이메일</th>
+                <th>MBTI</th>
+              </tr>
+            </thead>
+            <tbody>
+              {currenPageData.map((row) => (
+                <tr
+                  key={row.uid}
+                  onClick={() => handleEditClick(row.uid)}
+                  style={{
+                    backgroundColor:
+                      editingRow === row.uid || selectedRows.has(row.uid)
+                        ? "#f8f9fa"
+                        : "transparent",
+                  }}
+                >
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={selectedRows.has(row.uid)}
+                      onChange={(e) => {
+                        e.stopPropagation(); // 클릭 이벤트 중단
+                        handleCheckboxChange(row.uid);
+                      }}
+                    />
+                  </td>
+                  {editingRow === row.uid ? (
+                    <>
+                      <td>
+                        <input
+                          type="text"
+                          value={editedRow.name || ""}
+                          onChange={(e) => handleChange(e, "name")}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="text"
+                          value={editedRow.code || ""}
+                          onChange={(e) => handleChange(e, "code")}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="text"
+                          value={editedRow.birthday || ""}
+                          onChange={(e) => handleChange(e, "birthday")}
+                        />
+                      </td>
+                      <td>
+                        <select
+                          value={editedRow.positionUuid || ""}
+                          onChange={(e) => {
+                            console.log(e.target.value);
+                            handleChange(e, "positionUuid");
+                          }}
+                        >
+                          <option value="0" disabled hidden>
+                            직책 선택
+                          </option>
+                          {positionSelect.map((pos) => (
+                            <option key={pos.uuid} value={pos.uuid}>
+                              {pos.name}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td>
+                        <select
+                          value={editedRow.departmentUuid || ""}
+                          onChange={(e) => handleChange(e, "departmentUuid")}
+                        >
+                          <option value="0" disabled hidden>
+                            부서 선택
+                          </option>
+                          {departmentSelect.map((dpt) => (
+                            <option key={dpt.uuid} value={dpt.uuid}>
+                              {dpt.name}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td>
+                        <input
+                          type="text"
+                          value={editedRow.phone || ""}
+                          onChange={(e) => handleChange(e, "phone")}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="text"
+                          value={editedRow.directPhone || ""}
+                          onChange={(e) => handleChange(e, "directPhone")}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="text"
+                          value={editedRow.companyEmail || ""}
+                          onChange={(e) => handleChange(e, "companyEmail")}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="text"
+                          value={editedRow.personalEmail || ""}
+                          onChange={(e) => handleChange(e, "personalEmail")}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="text"
+                          value={editedRow.mbti || ""}
+                          onChange={(e) => handleChange(e, "mbti")}
+                        />
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td>{row.name}</td>
+                      <td>{row.code}</td>
+                      <td>{row.birthday}</td>
+                      <td>
+                        {
+                          positionSelect.find(
+                            (pos) => pos.uuid === row.positionUuid
+                          )?.name
+                        }
+                      </td>
+                      <td>
+                        {
+                          departmentSelect.find(
+                            (dpt) => dpt.uuid === row.departmentUuid
+                          )?.name
+                        }
+                      </td>
+                      <td>{row.phone}</td>
+                      <td>{row.directPhone}</td>
+                      <td>{row.companyEmail}</td>
+                      <td>{row.personalEmail}</td>
+                      <td>{row.mbti}</td>
+                    </>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <Pagination
+        page={page}
+        totalCount={data.length}
+        setPage={setPage}
+        pageSize={pageSize}
+      />
+    </div>
   );
 };
 
