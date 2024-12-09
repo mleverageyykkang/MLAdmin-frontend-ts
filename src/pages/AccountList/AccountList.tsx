@@ -5,8 +5,6 @@ import axios from "axios";
 import { useAuth } from "src/providers/authProvider";
 import IAccount, { medaiAccount } from "../../common/models/account/IAccount";
 
-const API_URL = "http://localhost:20220";
-
 interface User {
   uid: string;
   role: string;
@@ -40,12 +38,14 @@ const AccountList: React.FC = () => {
       try {
         const response = await axios.get("/sheet/account");
         setAccountData(response.data.body);
+        console.log(response.data.body);
       } catch (error) {
+        //203 에러 : 등록된 광고주 계정이 없습니다.
         console.log("Failed to fetch data:", error);
       }
     };
     getAccounts();
-  }, [accountData]);
+  }, []);
 
   if (userRole === null) {
     return <div>Loading...</div>; // 사용자 역할 로딩 중

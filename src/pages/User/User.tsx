@@ -5,6 +5,7 @@ import IDepartment from "common/models/department/IDepartment";
 import IPosition from "common/models/position/IPosition";
 import Pagination from "src/component/Pagination";
 import styles from "./User.module.scss";
+import qs from "qs";
 
 const User: React.FC = () => {
   const [data, setData] = useState<IUser[]>([]);
@@ -61,17 +62,69 @@ const User: React.FC = () => {
     setEditedRow({ ...rowToEdit });
   };
   // 데이터행 수정 후 저장
-  const handleSaveClick = () => {
+  const handleSaveClick = async () => {
+    if (!editingRow) return; // 수정 중인 행이 없으면 종료
+
     if (window.confirm("저장하시겠습니까?")) {
-      setData((prevData) => 
-        prevData.map((row) =>
-          row.uid === editingRow ? ({ ...editedRow } as IUser) : row
-        )
-      );
-      setEditingRow(null);
-      setEditedRow({});
-    } else return false;
+      try {
+        const isNewRow = data.find(
+          (row) => row.uid === editingRow && row.name === ""
+        ); // 새로운 행 여부 확인
+
+        const requestData = {
+          uid: editedRow.uid || "",
+          name: editedRow.name || "",
+          password: isNewRow ? "defaultPassword" : undefined, // 새 데이터일 경우 기본 비밀번호 추가
+          departmentUuid: editedRow.departmentUuid || "",
+          positionUuid: editedRow.positionUuid || "",
+          birthday: editedRow.birthday || "",
+          phone: editedRow.phone || "",
+          directPhone: editedRow.directPhone || "",
+          personalEmail: editedRow.personalEmail || "",
+          mbti: editedRow.mbti || "",
+        };
+
+        if (isNewRow) {
+          // 새 데이터인 경우 POST 요청
+          const response = await axios.post(
+            "/user",
+            qs.stringify(requestData), // 데이터를 x-www-form-urlencoded 형식으로 변환
+            { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+          );
+
+          if (response.status === 200) {
+            alert("새로운 사용자가 성공적으로 등록되었습니다.");
+          }
+        } else {
+          // 기존 데이터인 경우 PUT 요청
+          const response = await axios.put(
+            `/user/${editedRow.uid}`,
+            qs.stringify(requestData),
+            { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+          );
+
+          if (response.status === 200) {
+            alert("사용자 정보가 성공적으로 수정되었습니다.");
+          }
+        }
+
+        // 데이터 업데이트
+        setData((prevData) =>
+          prevData.map((row) =>
+            row.uid === editingRow ? ({ ...editedRow } as IUser) : row
+          )
+        );
+
+        // 상태 초기화
+        setEditingRow(null);
+        setEditedRow({});
+      } catch (error) {
+        console.error("저장 실패:", error);
+        alert("저장 중 문제가 발생했습니다.");
+      }
+    }
   };
+
   // 데이터행 수정 후 취소
   const handleCancelClick = () => {
     // 수정 중인 행이 새로 추가된 행이고 이를 취소하면 삭제
@@ -125,8 +178,13 @@ const User: React.FC = () => {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
     field: keyof IUser
   ) => {
-    setEditedRow({ ...editedRow, [field]: e.target.value });
+    const newValue = e.target.value;
+    setEditedRow((prev) => ({
+      ...prev,
+      [field]: newValue,
+    }));
   };
+
   // 새로운 행 추가
   const handleAddNew = () => {
     const newUser: IUser = {
@@ -152,13 +210,13 @@ const User: React.FC = () => {
       setPage(newPage); //새 데이터가 있는 페이지로 이동
       return updateData;
     });
+    console.log(data);
     setEditingRow(newUser.uid);
     setEditedRow(newUser);
   };
 
   return (
     <div className="container-fluid">
-      {/* 테이블 */}
       {/* 테이블 위의 버튼 */}
       <div className="d-flex justify-content-end mb-2">
         {editingRow || selectedRows.size > 0 ? (
@@ -184,14 +242,14 @@ const User: React.FC = () => {
             )}
           </>
         ) : null}
-        <select className="form-select w-auto mx-2 rounded" value={sortOption}>
+        {/* 등록 버튼 */}
+        <button className="btn btn-success mx-2" onClick={handleAddNew}>
+          등록
+        </button>
+        <select className="form-select w-auto  rounded" value={sortOption}>
           <option value="이름">이름</option>
           <option value="코드">코드</option>
         </select>
-        {/* 등록 버튼 */}
-        <button className="btn btn-success" onClick={handleAddNew}>
-          등록
-        </button>
       </div>
       <div className="card">
         <div className="card-body table-full-width px-0 table-responsive">
@@ -272,7 +330,6 @@ const User: React.FC = () => {
                         <select
                           value={editedRow.positionUuid || ""}
                           onChange={(e) => {
-                            console.log(e.target.value);
                             handleChange(e, "positionUuid");
                           }}
                         >

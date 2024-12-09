@@ -4,7 +4,6 @@ import logo from "../../assets/img/ml_logo.png";
 import axios from "axios";
 import { useAuth } from "../../providers/authProvider";
 
-const API_URL = "http://localhost:20220";
 
 function LoginPage() {
   const [uid, setUid] = useState(""); // uid의 타입은 TypeScript가 추론
