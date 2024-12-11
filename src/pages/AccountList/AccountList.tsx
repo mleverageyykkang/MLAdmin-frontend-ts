@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Card, Table, Container, Row, Col } from "react-bootstrap";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
-import { useAuth } from "src/providers/authProvider";
+import { useAuth } from "providers/authProvider";
 import IAccount, { medaiAccount } from "../../common/models/account/IAccount";
 
 interface User {

@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import IUser, { roleType } from "../../common/models/user/IUser";
-import IDepartment from "common/models/department/IDepartment";
-import IPosition from "common/models/position/IPosition";
-import Pagination from "src/component/Pagination";
+import IDepartment from "../../common/models/department/IDepartment";
+import IPosition from "../../common/models/position/IPosition";
+import Pagination from "component/Pagination";
 import styles from "./User.module.scss";
 import qs from "qs";
 
@@ -65,27 +65,46 @@ const User: React.FC = () => {
     const rowToEdit = data.find((row) => row.uid === id);
     setEditedRow((prev) => ({ ...prev, ...rowToEdit }));
   };
-  // 데이터행 수정 후 저장
+  // 데이터행 저장
   const handleSaveClick = async () => {
     if (!editingRow) return;
+
     if (window.confirm("저장하시겠습니까?")) {
       try {
-        const requestData = {
-          uid: editedRow.uid,
-          name: editedRow.name || "",
-          departmentUuid: editedRow.departmentUuid || "",
-          positionUuid: editedRow.positionUuid || "",
-          birthday: editedRow.birthday || "",
-          phone: editedRow.phone || "",
-          directPhone: editedRow.directPhone || "",
-          companyEmail: editedRow.companyEmail || "",
-          personalEmail: editedRow.personalEmail || "",
-          mbti: editedRow.mbti || "",
-        };
+        // 원래 데이터와 비교하여 수정된 필드만 추출
+        const originalRow = data.find((row) => row.uid === editingRow);
+        if (!originalRow) {
+          alert("수정할 데이터를 찾을 수 없습니다.");
+          return;
+        }
 
+        // 변경된 필드만 추출
+        const updatedFields = Object.entries(editedRow).reduce(
+          (acc, [key, value]: any) => {
+            if (key in originalRow) {
+              // originalRow가 키를 가지고 있는지 확인
+              const originalValue = originalRow[key as keyof IUser];
+              // 값이 다르고, `undefined`가 아닌 경우만 필드 추가
+              if (value !== originalValue && value !== undefined) {
+                acc[key as keyof IUser] = value;
+              }
+            }
+            return acc;
+          },
+          {} as Partial<IUser>
+        );
+        console.log(updatedFields);
+
+        // 수정된 값이 없을 경우 경고
+        if (Object.keys(updatedFields).length === 0) {
+          alert("수정된 내용이 없습니다.");
+          return;
+        }
+
+        // PUT 요청 보내기
         const response = await axios.put(
-          `/user/${editedRow.uid}`,
-          qs.stringify(requestData),
+          `/user/${editingRow}`,
+          qs.stringify(updatedFields),
           { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
         );
 
@@ -93,26 +112,8 @@ const User: React.FC = () => {
           alert("사용자 정보가 수정되었습니다.");
           setData((prevData) =>
             prevData.map((row) =>
-              row.uid === editedRow.uid
-                ? {
-                    ...row,
-                    uid: editedRow.uid || row.uid,
-                    name: editedRow.name || row.name,
-                    role: editedRow.role || row.role,
-                    code: editedRow.code || row.code,
-                    departmentUuid:
-                      editedRow.departmentUuid || row.departmentUuid,
-                    positionUuid: editedRow.positionUuid || row.positionUuid,
-                    birthday: editedRow.birthday || row.birthday,
-                    phone: editedRow.phone || row.phone,
-                    directPhone: editedRow.directPhone || row.directPhone,
-                    companyEmail: editedRow.companyEmail || row.companyEmail,
-                    personalEmail: editedRow.personalEmail || row.personalEmail,
-                    mbti: editedRow.mbti || row.mbti,
-                    isResigned: editedRow.isResigned ?? row.isResigned,
-                    createdAt: row.createdAt,
-                    updatedAt: new Date(),
-                  }
+              row.uid === editingRow
+                ? { ...row, ...editedRow } // 상태 업데이트
                 : row
             )
           );
@@ -130,12 +131,10 @@ const User: React.FC = () => {
   // 데이터행 취소
   const handleCancelClick = () => {
     // 수정 중인 행이 새로 추가된 행이고 이를 취소하면 삭제
-    if (
-      editingRow &&
-      data.find((row) => row.uid === editingRow && row.name === "")
-    ) {
-      setData((prevData) => {
-        const updatedData = prevData.filter((row) => row.uid !== editingRow);
+    console.log("editingRow:", editingRow, "buttonState:", buttonState);
+    if (editingRow == "") {
+      setData((prev) => {
+        const updatedData = prev.filter((row) => row.uid !== editingRow);
         // 새로 추가한 행의 페이지에 데이터가 없으면 이전 페이지로 이동
         const currentPageDataCount = updatedData.slice(
           (page - 1) * pageSize,
@@ -150,18 +149,29 @@ const User: React.FC = () => {
     setButtonState("default");
     setEditingRow(null);
     setEditedRow({});
+    // console.log(data);
   };
-  // 멀티데이터행 삭제
-  const handleDeleteClick = () => {
+  // 데이터행 삭제
+  const handleDeleteClick = async () => {
     if (!selectedRow) {
       alert("삭제할 항목을 선택해주세요."); // 선택된 행이 없을 때 경고 메시지
       return;
     }
     if (window.confirm("정말 삭제하시겠습니까?")) {
-      setData(
-        (prevData) => prevData.filter((row) => row.uid !== selectedRow) // 선택된 행만 삭제
-      );
-      setSelectedRow(null); // 선택 초기화
+      try {
+        //DELETE 요청
+        const response = await axios.delete(`/user/${selectedRow}`);
+        if (response.status === 200) {
+          alert("삭제되었습니다.");
+          setData(
+            (prevData) => prevData.filter((row) => row.uid !== selectedRow) // 선택된 행만 삭제
+          );
+          setSelectedRow(null); // 선택 초기화
+        }
+      } catch (err) {
+        console.error("삭제 실패:", err);
+        alert("삭제 중 문제가 발생했습니다.");
+      }
     } else {
       return false;
     }
@@ -177,15 +187,6 @@ const User: React.FC = () => {
     field: keyof IUser
   ) => {
     setEditedRow((prev) => ({ ...prev, [field]: e.target.value }));
-    console.log(
-      "field: ",
-      field,
-      "value:",
-      e.target.value,
-      "edited:",
-      editedRow[field],
-      editedRow.uid
-    );
   };
 
   // 새로운 행 추가
@@ -201,19 +202,14 @@ const User: React.FC = () => {
     const newUser: IUser = {
       uid: "",
       name: "",
-      code: data.length + 1,
       birthday: "",
       positionUuid: "",
       departmentUuid: "",
       phone: "",
       directPhone: "",
-      companyEmail: "",
       personalEmail: "",
       mbti: "",
       isResigned: false,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      role: roleType.USER,
     };
     setData((prevData) => {
       const updateData = [...prevData, newUser]; // 새 데이터를 맨 뒤에 추가
@@ -240,6 +236,7 @@ const User: React.FC = () => {
         personalEmail: editedRow.personalEmail || "",
         mbti: editedRow.mbti || "",
       };
+      console.log(requestData);
 
       const response = await axios.post("/user", qs.stringify(requestData), {
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -317,13 +314,7 @@ const User: React.FC = () => {
           <table className={`table-hover table text-center ${styles.table}`}>
             <thead>
               <tr>
-                <th>
-                  <input
-                    type="checkbox"
-                    checked={selectedRow === null}
-                    onChange={() => setSelectedRow(null)} // 전체 선택 해제
-                  />
-                </th>
+                <th className="text-nowrap">선택</th>
                 <th>아이디</th>
                 <th>이름</th>
                 <th className="text-nowrap">코드</th>
