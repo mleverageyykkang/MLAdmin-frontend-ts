@@ -12,12 +12,15 @@ const User: React.FC = () => {
   const [departmentSelect, setDepartmentSelect] = useState<IDepartment[]>([]);
   const [positionSelect, setPositionSelect] = useState<IPosition[]>([]);
   const [editingRow, setEditingRow] = useState<string | null>(null);
-  const [editedRow, setEditedRow] = useState<Partial<IUser>>({});
-  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+  const [editedRow, setEditedRow] = useState<Partial<IUser>>({}); // 행 수정 사항
+  const [selectedRow, setSelectedRow] = useState<string | null>(null);
   const [sortOption, setSortOption] = useState<string>("이름");
   const [page, setPage] = useState<number>(1);
   const pageSize = 10;
   const currenPageData = data.slice((page - 1) * pageSize, page * pageSize);
+  const [buttonState, setButtonState] = useState<"default" | "register">(
+    "default"
+  );
 
   //user 데이터 긁어오기
   useEffect(() => {
@@ -57,67 +60,66 @@ const User: React.FC = () => {
   }, []);
   // 데이터행 수정
   const handleEditClick = (id: string) => {
+    if (editingRow === id) return;
     setEditingRow(id);
     const rowToEdit = data.find((row) => row.uid === id);
-    setEditedRow({ ...rowToEdit });
+    setEditedRow((prev) => ({ ...prev, ...rowToEdit }));
   };
   // 데이터행 수정 후 저장
   const handleSaveClick = async () => {
-    if (!editingRow) return; // 수정 중인 행이 없으면 종료
-
+    if (!editingRow) return;
     if (window.confirm("저장하시겠습니까?")) {
       try {
-        const isNewRow = data.find(
-          (row) => row.uid === editingRow && row.name === ""
-        ); // 새로운 행 여부 확인
-
         const requestData = {
-          uid: editedRow.uid || "",
+          uid: editedRow.uid,
           name: editedRow.name || "",
-          password: isNewRow ? "defaultPassword" : undefined, // 새 데이터일 경우 기본 비밀번호 추가
           departmentUuid: editedRow.departmentUuid || "",
           positionUuid: editedRow.positionUuid || "",
           birthday: editedRow.birthday || "",
           phone: editedRow.phone || "",
           directPhone: editedRow.directPhone || "",
+          companyEmail: editedRow.companyEmail || "",
           personalEmail: editedRow.personalEmail || "",
           mbti: editedRow.mbti || "",
         };
 
-        if (isNewRow) {
-          // 새 데이터인 경우 POST 요청
-          const response = await axios.post(
-            "/user",
-            qs.stringify(requestData), // 데이터를 x-www-form-urlencoded 형식으로 변환
-            { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
-          );
-
-          if (response.status === 200) {
-            alert("새로운 사용자가 성공적으로 등록되었습니다.");
-          }
-        } else {
-          // 기존 데이터인 경우 PUT 요청
-          const response = await axios.put(
-            `/user/${editedRow.uid}`,
-            qs.stringify(requestData),
-            { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
-          );
-
-          if (response.status === 200) {
-            alert("사용자 정보가 성공적으로 수정되었습니다.");
-          }
-        }
-
-        // 데이터 업데이트
-        setData((prevData) =>
-          prevData.map((row) =>
-            row.uid === editingRow ? ({ ...editedRow } as IUser) : row
-          )
+        const response = await axios.put(
+          `/user/${editedRow.uid}`,
+          qs.stringify(requestData),
+          { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
         );
 
-        // 상태 초기화
-        setEditingRow(null);
-        setEditedRow({});
+        if (response.status === 200) {
+          alert("사용자 정보가 수정되었습니다.");
+          setData((prevData) =>
+            prevData.map((row) =>
+              row.uid === editedRow.uid
+                ? {
+                    ...row,
+                    uid: editedRow.uid || row.uid,
+                    name: editedRow.name || row.name,
+                    role: editedRow.role || row.role,
+                    code: editedRow.code || row.code,
+                    departmentUuid:
+                      editedRow.departmentUuid || row.departmentUuid,
+                    positionUuid: editedRow.positionUuid || row.positionUuid,
+                    birthday: editedRow.birthday || row.birthday,
+                    phone: editedRow.phone || row.phone,
+                    directPhone: editedRow.directPhone || row.directPhone,
+                    companyEmail: editedRow.companyEmail || row.companyEmail,
+                    personalEmail: editedRow.personalEmail || row.personalEmail,
+                    mbti: editedRow.mbti || row.mbti,
+                    isResigned: editedRow.isResigned ?? row.isResigned,
+                    createdAt: row.createdAt,
+                    updatedAt: new Date(),
+                  }
+                : row
+            )
+          );
+          setButtonState("default");
+          setEditingRow(null);
+          setEditedRow({});
+        }
       } catch (error) {
         console.error("저장 실패:", error);
         alert("저장 중 문제가 발생했습니다.");
@@ -125,7 +127,7 @@ const User: React.FC = () => {
     }
   };
 
-  // 데이터행 수정 후 취소
+  // 데이터행 취소
   const handleCancelClick = () => {
     // 수정 중인 행이 새로 추가된 행이고 이를 취소하면 삭제
     if (
@@ -145,50 +147,59 @@ const User: React.FC = () => {
         return updatedData;
       });
     }
+    setButtonState("default");
     setEditingRow(null);
     setEditedRow({});
   };
   // 멀티데이터행 삭제
   const handleDeleteClick = () => {
-    if (selectedRows.size === 0) {
+    if (!selectedRow) {
       alert("삭제할 항목을 선택해주세요."); // 선택된 행이 없을 때 경고 메시지
       return;
     }
     if (window.confirm("정말 삭제하시겠습니까?")) {
-      setData((prevData) =>
-        prevData.filter((row) => !selectedRows.has(row.uid))
+      setData(
+        (prevData) => prevData.filter((row) => row.uid !== selectedRow) // 선택된 행만 삭제
       );
-      setSelectedRows(new Set()); // 선택된 행 초기화
-    } else return false;
+      setSelectedRow(null); // 선택 초기화
+    } else {
+      return false;
+    }
   };
+
   // 체크박스 선택
   const handleCheckboxChange = (id: string) => {
-    setSelectedRows((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
-      }
-      return newSet;
-    });
+    setSelectedRow((prev) => (prev === id ? null : id));
   };
   // 수정사항에 대한 onChange
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
     field: keyof IUser
   ) => {
-    const newValue = e.target.value;
-    setEditedRow((prev) => ({
-      ...prev,
-      [field]: newValue,
-    }));
+    setEditedRow((prev) => ({ ...prev, [field]: e.target.value }));
+    console.log(
+      "field: ",
+      field,
+      "value:",
+      e.target.value,
+      "edited:",
+      editedRow[field],
+      editedRow.uid
+    );
   };
 
   // 새로운 행 추가
   const handleAddNew = () => {
+    //마지막 데이터 확인
+    const lastRow = data[data.length - 1];
+    if (lastRow && (!lastRow.uid || !lastRow.name)) {
+      alert("이전 행의 필수 정보를 입력하지 않아 해당 행이 삭제됩니다.");
+      setData((prevData) => prevData.slice(0, -1)); // 마지막 행 삭제
+      return;
+    }
+    setButtonState("register");
     const newUser: IUser = {
-      uid: (data.length + 1).toString(),
+      uid: "",
       name: "",
       code: data.length + 1,
       birthday: "",
@@ -210,18 +221,51 @@ const User: React.FC = () => {
       setPage(newPage); //새 데이터가 있는 페이지로 이동
       return updateData;
     });
-    console.log(data);
-    setEditingRow(newUser.uid);
+    setEditingRow(newUser.uid); // 새로운 행을 편집 모드로 설정
     setEditedRow(newUser);
+  };
+  // 새로운 행 등록 api
+  const handleRegisterClick = async () => {
+    try {
+      const requestData = {
+        uid: editedRow.uid || "",
+        name: editedRow.name || "",
+        password: "defaultPassword",
+        departmentUuid: editedRow.departmentUuid || "",
+        positionUuid: editedRow.positionUuid || "",
+        birthday: editedRow.birthday || "",
+        phone: editedRow.phone || "",
+        directPhone: editedRow.directPhone || "",
+        companyEmail: editedRow.companyEmail || "",
+        personalEmail: editedRow.personalEmail || "",
+        mbti: editedRow.mbti || "",
+      };
+
+      const response = await axios.post("/user", qs.stringify(requestData), {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      });
+
+      if (response.status === 200) {
+        alert("새로운 사용자가 등록되었습니다.");
+        const addedUser = response.data.body; // 서버에서 반환된 데이터
+        setData((prevData) => [...prevData, addedUser]); // 데이터 목록 업데이트
+        setButtonState("default");
+        setEditingRow(null);
+        setEditedRow({});
+      }
+    } catch (error) {
+      console.error("등록 실패:", error);
+      alert("등록 중 문제가 발생했습니다.");
+    }
   };
 
   return (
     <div className="container-fluid">
       {/* 테이블 위의 버튼 */}
       <div className="d-flex justify-content-end mb-2">
-        {editingRow || selectedRows.size > 0 ? (
+        {editingRow || selectedRow ? (
           <>
-            {editingRow && (
+            {editingRow && buttonState !== "register" && (
               <>
                 <button
                   className="btn btn-primary mr-2"
@@ -243,9 +287,26 @@ const User: React.FC = () => {
           </>
         ) : null}
         {/* 등록 버튼 */}
-        <button className="btn btn-success mx-2" onClick={handleAddNew}>
-          등록
-        </button>
+        {buttonState === "default" ? (
+          <button className="btn btn-success mx-2" onClick={handleAddNew}>
+            추가
+          </button>
+        ) : (
+          <>
+            <button
+              className="btn btn-success mx-2"
+              onClick={handleRegisterClick}
+            >
+              등록
+            </button>
+            <button
+              className="btn btn-secondary mr-2"
+              onClick={handleCancelClick}
+            >
+              취소
+            </button>
+          </>
+        )}
         <select className="form-select w-auto  rounded" value={sortOption}>
           <option value="이름">이름</option>
           <option value="코드">코드</option>
@@ -259,18 +320,13 @@ const User: React.FC = () => {
                 <th>
                   <input
                     type="checkbox"
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedRows(new Set(data.map((row) => row.uid)));
-                      } else {
-                        setSelectedRows(new Set());
-                      }
-                    }}
-                    checked={selectedRows.size === data.length}
+                    checked={selectedRow === null}
+                    onChange={() => setSelectedRow(null)} // 전체 선택 해제
                   />
                 </th>
+                <th>아이디</th>
                 <th>이름</th>
-                <th>코드</th>
+                <th className="text-nowrap">코드</th>
                 <th>생년월일</th>
                 <th>직책</th>
                 <th>부서</th>
@@ -288,7 +344,7 @@ const User: React.FC = () => {
                   onClick={() => handleEditClick(row.uid)}
                   style={{
                     backgroundColor:
-                      editingRow === row.uid || selectedRows.has(row.uid)
+                      editingRow === row.uid || selectedRow === row.uid
                         ? "#f8f9fa"
                         : "transparent",
                   }}
@@ -296,11 +352,9 @@ const User: React.FC = () => {
                   <td>
                     <input
                       type="checkbox"
-                      checked={selectedRows.has(row.uid)}
-                      onChange={(e) => {
-                        e.stopPropagation(); // 클릭 이벤트 중단
-                        handleCheckboxChange(row.uid);
-                      }}
+                      checked={selectedRow === row.uid}
+                      disabled={buttonState === "register"} // 추가 상태에서는 체크박스 비활성화
+                      onChange={() => handleCheckboxChange(row.uid)}
                     />
                   </td>
                   {editingRow === row.uid ? (
@@ -308,17 +362,18 @@ const User: React.FC = () => {
                       <td>
                         <input
                           type="text"
-                          value={editedRow.name || ""}
-                          onChange={(e) => handleChange(e, "name")}
+                          value={editedRow.uid || ""}
+                          onChange={(e) => handleChange(e, "uid")}
                         />
                       </td>
                       <td>
                         <input
                           type="text"
-                          value={editedRow.code || ""}
-                          onChange={(e) => handleChange(e, "code")}
+                          value={editedRow.name || ""}
+                          onChange={(e) => handleChange(e, "name")}
                         />
                       </td>
+                      <td>{row.code}</td>
                       <td>
                         <input
                           type="text"
@@ -329,13 +384,9 @@ const User: React.FC = () => {
                       <td>
                         <select
                           value={editedRow.positionUuid || ""}
-                          onChange={(e) => {
-                            handleChange(e, "positionUuid");
-                          }}
+                          onChange={(e) => handleChange(e, "positionUuid")}
                         >
-                          <option value="0" disabled hidden>
-                            직책 선택
-                          </option>
+                          <option value="">직책 선택</option>
                           {positionSelect.map((pos) => (
                             <option key={pos.uuid} value={pos.uuid}>
                               {pos.name}
@@ -348,9 +399,7 @@ const User: React.FC = () => {
                           value={editedRow.departmentUuid || ""}
                           onChange={(e) => handleChange(e, "departmentUuid")}
                         >
-                          <option value="0" disabled hidden>
-                            부서 선택
-                          </option>
+                          <option value="">부서 선택</option>
                           {departmentSelect.map((dpt) => (
                             <option key={dpt.uuid} value={dpt.uuid}>
                               {dpt.name}
@@ -396,6 +445,7 @@ const User: React.FC = () => {
                     </>
                   ) : (
                     <>
+                      <td>{row.uid}</td>
                       <td>{row.name}</td>
                       <td>{row.code}</td>
                       <td>{row.birthday}</td>

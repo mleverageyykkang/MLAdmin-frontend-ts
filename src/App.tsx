@@ -12,6 +12,7 @@ import HeaderNavbar from "./component/Navbar/HeaderNavbar";
 import AccountList from "./pages/AccountList/AccountList";
 import Commission from "./pages/Commission/Commission";
 import { AuthProvider } from "./providers/authProvider";
+import Deposit from "./pages/Deposit/Deposit";
 
 const dashboardRoutes = [
   {
@@ -80,7 +81,7 @@ function App() {
             <Route path="/user" element={<User />} />
             <Route path="/sheet/1" element={<Commission />} />
             <Route path="/sheet/2" element={<AccountList />} />
-            <Route path="/sheet/3" element={<User />} />
+            <Route path="/sheet/3" element={<Deposit />} />
             <Route path="/sheet/4" element={<User />} />
             <Route path="/tracking" element={<User />} />
           </Routes>

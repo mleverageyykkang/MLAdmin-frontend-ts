@@ -16,6 +16,7 @@ const AccountList: React.FC = () => {
   const navigate = useNavigate();
   const [userRole, setUserRole] = useState<string | null>(null);
   const { isLoggedIn } = useAuth();
+  const [error, setError] = useState<string | null>();
 
   useEffect(() => {
     const fetchUserRole = async () => {
@@ -38,9 +39,10 @@ const AccountList: React.FC = () => {
       try {
         const response = await axios.get("/sheet/account");
         setAccountData(response.data.body);
-        console.log(response.data.body);
-      } catch (error) {
         //203 에러 : 등록된 광고주 계정이 없습니다.
+        if (response.data.result.code == 203)
+          console.log(response.data.result.message);
+      } catch (error) {
         console.log("Failed to fetch data:", error);
       }
     };
@@ -61,7 +63,7 @@ const AccountList: React.FC = () => {
         <div className="card-body table-full-width px-0 table-responsive">
           <table className="table">
             <thead>
-              <tr className="text-nowrap">
+              <tr className="text-nowrap text-center">
                 <th colSpan={12}>광고주 정보</th>
                 <th colSpan={2}>중요도</th>
                 <th colSpan={4}>관리 정보</th>
@@ -117,10 +119,45 @@ const AccountList: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              <tr className="text-nowrap">
-                {/* 광고주 정보 */}
-                <td></td>
-              </tr>
+              {accountData &&
+                accountData.map((row) => (
+                  <tr className="text-nowrap">
+                    {/* 광고주 정보 */}
+                    <td>{row?.companyName}</td>
+                    <td>{row.advertiserName}</td>
+                    <td>{row.residentNumber}</td>
+                    <td>{row.managerName}</td>
+                    <td>{row.phone}</td>
+                    <td>{row.businessReg}</td>
+                    <td>{row.businessNumber}</td>
+                    <td>{row.businessAddress}</td>
+                    <td>{row.businessType1}</td>
+                    <td>{row.businessType2}</td>
+                    <td>{row.companyEmail}</td>
+                    <td>{row.marketerEmail}</td>
+                    <td>{row.spending}</td>
+                    <td>{row.point}</td>
+                    {/* <td>{row.transferDate}</td> */}
+                    <td>{row.taxInvoiceInfo}</td>
+                    <td>{row.payback}</td>
+                    <td>{row.note}</td>
+                    {/* <td>{row.leaveDate}</td> */}
+                    <td>{row.leaveReason}</td>
+                    <td>{row.mediaAccount?.naver?.id}</td>
+                    <td>{row.mediaAccount?.naver?.pwd}</td>
+                    <td>{row.mediaAccount?.gfa?.id}</td>
+                    <td>{row.mediaAccount?.gfa?.pwd}</td>
+                    <td>{row.mediaAccount?.gfa?.gfaNumber}</td>
+                    <td>{row.mediaAccount?.kakao?.id}</td>
+                    <td>{row.mediaAccount?.kakao?.pwd}</td>
+                    <td>{row.mediaAccount?.kakao?.kakaoNumber}</td>
+                    <td>{row.mediaAccount?.kakao?.momentNumber}</td>
+                    <td>{row.mediaAccount?.google?.id}</td>
+                    <td>{row.mediaAccount?.google?.pwd}</td>
+                    <td>{row.mediaAccount?.etc?.id}</td>
+                    <td>{row.mediaAccount?.etc?.pwd}</td>
+                  </tr>
+                ))}
             </tbody>
           </table>
         </div>

@@ -27,7 +27,7 @@ function LoginPage() {
       }
     } catch (err: any) {
       if (err.response) {
-        alert(err.response.data.message || "로그인에 실패했습니다.");
+        alert(err.response.data.result.message || "로그인에 실패했습니다.");
       }
     }
   };
