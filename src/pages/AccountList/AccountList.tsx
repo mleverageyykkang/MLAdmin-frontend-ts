@@ -12,7 +12,6 @@ interface User {
 }
 
 const AccountList: React.FC = () => {
-  const { uid } = useParams<{ uid: string }>();
   const [accountData, setAccountData] = useState<IAccount[]>([]);
   const navigate = useNavigate();
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -22,6 +21,8 @@ const AccountList: React.FC = () => {
   );
   const [editingRow, setEditingRow] = useState<string | null>(null);
   const [editedRow, setEditedRow] = useState<Partial<IAccount>>({}); // 행 수정 사항
+  const [selectedRow, setSelectedRow] = useState<string | null>(null);
+
   useEffect(() => {
     const fetchUserRole = async () => {
       try {
@@ -176,9 +177,46 @@ const AccountList: React.FC = () => {
     });
   };
 
+  const handleRowClick = (uuid: string) => {
+    setEditingRow(uuid); // 수정 중인 행 설정
+    const rowToEdit = accountData.find((row) => row.uuid === uuid);
+    setEditedRow({ ...rowToEdit }); // 해당 행 데이터 설정
+  };
+
+  const handleCheckboxChange = (uuid: string) => {
+    setSelectedRow((prev) => (prev === uuid ? null : uuid)); // 선택된 행 토글
+  };
+
   const handleDeleteClick = async () => {
-    
-  }
+    if (!selectedRow) {
+      alert("삭제할 항목을 선택해주세요.");
+      return;
+    }
+
+    if (window.confirm("정말 삭제하시겠습니까?")) {
+      try {
+        // DELETE 요청
+        await axios.delete(`/sheet/account/${selectedRow}`, {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        alert("선택한 계정이 삭제되었습니다.");
+
+        // 상태에서 삭제된 행 제거
+        setAccountData((prevData) =>
+          prevData.filter((row) => row.uuid !== selectedRow)
+        );
+
+        // 선택 상태 초기화
+        setSelectedRow(null);
+      } catch (error) {
+        console.error("삭제 실패:", error);
+        alert("삭제 중 문제가 발생했습니다.");
+      }
+    }
+  };
 
   return (
     <div className="container-fluid">
@@ -189,9 +227,24 @@ const AccountList: React.FC = () => {
         </div>
         <div>
           {buttonState === "default" ? (
-            <button className="btn btn-success mx-2" onClick={handleAddNew}>
-              추가
-            </button>
+            <div>
+              {buttonState === "default" && (
+                <>
+                  <button
+                    className="btn btn-danger mx-2"
+                    onClick={handleDeleteClick}
+                  >
+                    삭제
+                  </button>
+                  <button
+                    className="btn btn-success mx-2"
+                    onClick={handleAddNew}
+                  >
+                    추가
+                  </button>
+                </>
+              )}
+            </div>
           ) : (
             <>
               <button
@@ -215,6 +268,7 @@ const AccountList: React.FC = () => {
           <table className="table">
             <thead>
               <tr className="text-nowrap text-center">
+                <th></th> {/* 선택 열 */}
                 <th colSpan={12}>광고주 정보</th>
                 <th colSpan={2}>중요도</th>
                 <th colSpan={4}>관리 정보</th>
@@ -228,6 +282,7 @@ const AccountList: React.FC = () => {
               </tr>
               <tr className="text-nowrap">
                 {/* 광고주 정보 */}
+                <th>선택</th>
                 <th>업체명</th>
                 <th>대표자명</th>
                 <th>주민등록번호(신분증)</th>
@@ -271,7 +326,22 @@ const AccountList: React.FC = () => {
             </thead>
             <tbody>
               {accountData.map((row) => (
-                <tr key={row.uuid} className="text-nowrap">
+                <tr
+                  key={row.uuid}
+                  className="text-nowrap"
+                  onClick={() => handleRowClick(row.uuid)} // 행 클릭 시 수정 모드로 전환
+                  style={{
+                    backgroundColor:
+                      selectedRow === row.uuid ? "#f0f8ff" : "transparent", // 선택 시 강조
+                  }}
+                >
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={selectedRow === row.uuid} // 선택 여부 확인
+                      onChange={() => handleCheckboxChange(row.uuid)} // 체크박스 선택 처리
+                    />
+                  </td>
                   {editingRow === row.uuid ? (
                     <>
                       <td>
