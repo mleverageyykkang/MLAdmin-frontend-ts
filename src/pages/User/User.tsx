@@ -71,20 +71,16 @@ const User: React.FC = () => {
 
     if (window.confirm("저장하시겠습니까?")) {
       try {
-        // 원래 데이터와 비교하여 수정된 필드만 추출
         const originalRow = data.find((row) => row.uid === editingRow);
         if (!originalRow) {
           alert("수정할 데이터를 찾을 수 없습니다.");
           return;
         }
 
-        // 변경된 필드만 추출
         const updatedFields = Object.entries(editedRow).reduce(
           (acc, [key, value]: any) => {
             if (key in originalRow) {
-              // originalRow가 키를 가지고 있는지 확인
               const originalValue = originalRow[key as keyof IUser];
-              // 값이 다르고, `undefined`가 아닌 경우만 필드 추가
               if (value !== originalValue && value !== undefined) {
                 acc[key as keyof IUser] = value;
               }
@@ -93,30 +89,36 @@ const User: React.FC = () => {
           },
           {} as Partial<IUser>
         );
-        console.log(updatedFields);
 
-        // 수정된 값이 없을 경우 경고
+        const customFields = updatedFields as Record<string, any>;
+        customFields.userId = editedRow.uid;
+
         if (Object.keys(updatedFields).length === 0) {
           alert("수정된 내용이 없습니다.");
           return;
         }
 
-        // PUT 요청 보내기
         const response = await axios.put(
           `/user/${editingRow}`,
-          qs.stringify(updatedFields),
+          qs.stringify(customFields),
           { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
         );
 
         if (response.status === 200) {
           alert("사용자 정보가 수정되었습니다.");
+          const updatedUser = response.data;
+
+          // 데이터 상태 업데이트
           setData((prevData) =>
             prevData.map((row) =>
-              row.uid === editingRow
-                ? { ...row, ...editedRow } // 상태 업데이트
-                : row
+              row.uid === editingRow ? { ...row, ...updatedUser } : row
             )
           );
+
+          // 서버에서 최신 데이터를 가져와 동기화
+          const refreshedData = await axios.get("/user");
+          setData(refreshedData.data.body);
+
           setButtonState("default");
           setEditingRow(null);
           setEditedRow({});
@@ -199,7 +201,7 @@ const User: React.FC = () => {
       return;
     }
     setButtonState("register");
-    const newUser: IUser = {
+    const newUser: Partial<IUser> = {
       uid: "",
       name: "",
       birthday: "",
@@ -211,13 +213,13 @@ const User: React.FC = () => {
       mbti: "",
       isResigned: false,
     };
-    setData((prevData) => {
+    setData((prevData: any) => {
       const updateData = [...prevData, newUser]; // 새 데이터를 맨 뒤에 추가
       const newPage = Math.ceil(updateData.length / pageSize);
       setPage(newPage); //새 데이터가 있는 페이지로 이동
       return updateData;
     });
-    setEditingRow(newUser.uid); // 새로운 행을 편집 모드로 설정
+    setEditingRow(newUser.uid || ""); // 새로운 행을 편집 모드로 설정
     setEditedRow(newUser);
   };
   // 새로운 행 등록 api
@@ -226,7 +228,7 @@ const User: React.FC = () => {
       const requestData = {
         uid: editedRow.uid || "",
         name: editedRow.name || "",
-        password: "defaultPassword",
+        password: "0000",
         departmentUuid: editedRow.departmentUuid || "",
         positionUuid: editedRow.positionUuid || "",
         birthday: editedRow.birthday || "",
@@ -236,7 +238,6 @@ const User: React.FC = () => {
         personalEmail: editedRow.personalEmail || "",
         mbti: editedRow.mbti || "",
       };
-      console.log(requestData);
 
       const response = await axios.post("/user", qs.stringify(requestData), {
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -245,7 +246,9 @@ const User: React.FC = () => {
       if (response.status === 200) {
         alert("새로운 사용자가 등록되었습니다.");
         const addedUser = response.data.body; // 서버에서 반환된 데이터
+        console.log("prev;", data);
         setData((prevData) => [...prevData, addedUser]); // 데이터 목록 업데이트
+        console.log("after;", data);
         setButtonState("default");
         setEditingRow(null);
         setEditedRow({});
@@ -313,11 +316,11 @@ const User: React.FC = () => {
         <div className="card-body table-full-width px-0 table-responsive">
           <table className={`table-hover table text-center ${styles.table}`}>
             <thead>
-              <tr>
-                <th className="text-nowrap">선택</th>
+              <tr className="text-nowrap">
+                <th>선택</th>
                 <th>아이디</th>
                 <th>이름</th>
-                <th className="text-nowrap">코드</th>
+                <th>코드</th>
                 <th>생년월일</th>
                 <th>직책</th>
                 <th>부서</th>
@@ -339,6 +342,7 @@ const User: React.FC = () => {
                         ? "#f8f9fa"
                         : "transparent",
                   }}
+                  className="text-nowrap"
                 >
                   <td>
                     <input

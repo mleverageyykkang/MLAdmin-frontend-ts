@@ -1,10 +1,11 @@
 // User.module.scss
 .table {
-  input{
+  input[type="text"]{
     width: 100%; // 너비를 120%로 설정
     max-width: none; // 기본 Bootstrap 너비 제한 해제
+    height: 25px;
   }
   select{
-    height:30px
+    height:25px;
   }
 }
