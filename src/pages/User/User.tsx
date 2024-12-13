@@ -34,6 +34,7 @@ const User: React.FC = () => {
     };
     fetchData();
   }, []);
+
   //부서 데이터 긁어오기
   useEffect(() => {
     const fetchDpt = async () => {
@@ -46,6 +47,7 @@ const User: React.FC = () => {
     };
     fetchDpt();
   }, []);
+
   //직책 데이터 긁어오기
   useEffect(() => {
     const fetchPos = async () => {
@@ -58,6 +60,7 @@ const User: React.FC = () => {
     };
     fetchPos();
   }, []);
+
   // 데이터행 수정
   const handleEditClick = (id: string) => {
     if (editingRow === id) return;
@@ -65,6 +68,7 @@ const User: React.FC = () => {
     const rowToEdit = data.find((row) => row.uid === id);
     setEditedRow((prev) => ({ ...prev, ...rowToEdit }));
   };
+
   // 데이터행 저장
   const handleSaveClick = async () => {
     if (!editingRow) return;
@@ -76,7 +80,6 @@ const User: React.FC = () => {
           alert("수정할 데이터를 찾을 수 없습니다.");
           return;
         }
-
         const updatedFields = Object.entries(editedRow).reduce(
           (acc, [key, value]: any) => {
             if (key in originalRow) {
@@ -89,36 +92,32 @@ const User: React.FC = () => {
           },
           {} as Partial<IUser>
         );
-
+        // userId를 포함한 Fields 만들기기
         const customFields = updatedFields as Record<string, any>;
         customFields.userId = editedRow.uid;
-
-        if (Object.keys(updatedFields).length === 0) {
+        // 수정사항이 없을 때
+        if (Object.keys(customFields).length === 0) {
           alert("수정된 내용이 없습니다.");
           return;
         }
-
+        // 수정사항 보내기
         const response = await axios.put(
           `/user/${editingRow}`,
           qs.stringify(customFields),
           { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
         );
-
         if (response.status === 200) {
           alert("사용자 정보가 수정되었습니다.");
           const updatedUser = response.data;
-
           // 데이터 상태 업데이트
           setData((prevData) =>
             prevData.map((row) =>
               row.uid === editingRow ? { ...row, ...updatedUser } : row
             )
           );
-
           // 서버에서 최신 데이터를 가져와 동기화
           const refreshedData = await axios.get("/user");
           setData(refreshedData.data.body);
-
           setButtonState("default");
           setEditingRow(null);
           setEditedRow({});
@@ -133,7 +132,6 @@ const User: React.FC = () => {
   // 데이터행 취소
   const handleCancelClick = () => {
     // 수정 중인 행이 새로 추가된 행이고 이를 취소하면 삭제
-    console.log("editingRow:", editingRow, "buttonState:", buttonState);
     if (editingRow == "") {
       setData((prev) => {
         const updatedData = prev.filter((row) => row.uid !== editingRow);
@@ -151,7 +149,6 @@ const User: React.FC = () => {
     setButtonState("default");
     setEditingRow(null);
     setEditedRow({});
-    // console.log(data);
   };
   // 데이터행 삭제
   const handleDeleteClick = async () => {
@@ -222,7 +219,7 @@ const User: React.FC = () => {
     setEditingRow(newUser.uid || ""); // 새로운 행을 편집 모드로 설정
     setEditedRow(newUser);
   };
-  // 새로운 행 등록 api
+  // 데이터터행 등록 api
   const handleRegisterClick = async () => {
     try {
       const requestData = {

@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { Card, Table, Container, Row, Col } from "react-bootstrap";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "providers/authProvider";
-// import IDeposit, { paymentType } from "../../common/models/deposit/IDeposit";
+import dayjs from "dayjs";
+import IDeposit, {
+  paymentType,
+  processType,
+} from "../../common/models/deposit/IDeposit";
 
 interface User {
   uid: string;
@@ -12,7 +15,7 @@ interface User {
 
 const Deposit: React.FC = () => {
   const { uid } = useParams<{ uid: string }>();
-  //   const [depositData, setDepositData] = useState<IAccount[]>([]);
+  const [depositData, setDepositData] = useState<IDeposit[]>([]);
   const navigate = useNavigate();
   const [userRole, setUserRole] = useState<string | null>(null);
   const { isLoggedIn } = useAuth();
@@ -37,8 +40,9 @@ const Deposit: React.FC = () => {
   useEffect(() => {
     const getAccounts = async () => {
       try {
-        const response = await axios.get("/sheet/account");
+        const response = await axios.get("/sheet/deposit");
         console.log(response.data.body);
+        setDepositData(response.data.body);
       } catch (error) {
         console.log("Failed to fetch data:", error);
       }
@@ -70,17 +74,38 @@ const Deposit: React.FC = () => {
                 <th>입금금액</th>
                 <th>회사처리유무</th>
                 <th>결제방식</th>
-                <th>충전 후 잔액</th>
+                <th>충전 가능 금액</th>
+                <th>네이버</th>
+                <th>네이버GFA</th>
+                <th>카카오</th>
+                <th>카카오모먼트</th>
+                <th>구글</th>
+                <th>당근</th>
+                <th>네이버NOSP</th>
+                <th>메타</th>
+                <th>데이블</th>
+                <th>송금/결제</th>
+                <th>순매출</th>
               </tr>
             </thead>
             <tbody>
-              {/* {accountData &&
-                accountData.map((row) => ( */}
-              <tr className="text-nowrap">
-                {/* 광고주 정보 */}
-                {/* <td>{row.companyName}</td> */}
-              </tr>
-              {/* ))} */}
+              {depositData &&
+                depositData.map((row) => (
+                  <tr className="text-nowrap">
+                    {/* 광고주 정보 */}
+                    <td>{dayjs(row.progressDate).format("YYYY-MM-DD")}</td>
+                    <td>{row.company}</td>
+                    <td>{row.depositor}</td>
+                    <td>{dayjs(row.depositDate).format("YYYY-MM-DD")}</td>
+                    <td>{row.taxInvoice}</td>
+                    <td>{Number(row.depositAmount)}</td>
+                    <td>{row.paymentType}</td>
+                    <td>{row.processType}</td>
+                    <td>{row.rechargeableAmount}</td>
+                    {/* <td>{Number(row.deductAmount)}</td> */}
+                    {/* <td>{dayjs(row.depositDueDate).format("YYYY-MM-DD")}</td> */}
+                  </tr>
+                ))}
             </tbody>
           </table>
         </div>

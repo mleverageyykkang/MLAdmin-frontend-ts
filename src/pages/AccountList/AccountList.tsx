@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Card, Table, Container, Row, Col } from "react-bootstrap";
-import { useParams, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "providers/authProvider";
 import IAccount, { medaiAccount } from "../../common/models/account/IAccount";
@@ -39,12 +38,13 @@ const AccountList: React.FC = () => {
     };
     fetchUserRole();
   }, [isLoggedIn]);
+
   useEffect(() => {
     const getAccounts = async () => {
       try {
         const response = await axios.get("/sheet/account");
         setAccountData(response.data.body);
-        console.log(response.data.body);
+        // console.log(response.data.body);
         //203 에러 : 등록된 광고주 계정이 없습니다.
         if (response.data.result.code == 203)
           console.log(response.data.result.message);
@@ -62,29 +62,25 @@ const AccountList: React.FC = () => {
   if (userRole !== "system") {
     return <div>접근 권한이 없습니다.</div>; // 권한 없는 사용자
   }
-  // 광고주 등록
+
   const handleRegisterClick = async () => {
     try {
       // POST 요청에 사용할 데이터에서 임시 uuid 제거
       const { uuid, ...requestData } = editedRow; // uuid 제외
-
       const response = await axios.post("/sheet/account", requestData, {
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
         },
       });
-
       if (response.status === 200) {
         alert("새로운 계정이 등록되었습니다.");
         const addedAccount = response.data; // 서버에서 반환된 데이터
-
         // 상태 업데이트: 임시 UUID를 서버의 데이터로 대체
         setAccountData((prevData) =>
           prevData.map((row) =>
             row.uuid === editingRow ? { ...row, ...addedAccount } : row
           )
         );
-
         // 상태 초기화
         setEditingRow(null);
         setEditedRow({});
@@ -97,7 +93,7 @@ const AccountList: React.FC = () => {
       alert("등록 중 문제가 발생했습니다.");
     }
   };
-  //새로운 행 추가
+
   const handleAddNew = () => {
     // 새로운 행의 데이터 초기화
     const newAccount: Partial<IAccount> = {
@@ -130,7 +126,6 @@ const AccountList: React.FC = () => {
         etc: { id: "", pwd: "" },
       },
     };
-
     // 상태 업데이트
     setAccountData((prevData: any) => [...prevData, newAccount]);
     setEditingRow(newAccount.uuid || ""); // 새 행을 편집 모드로 설정
@@ -139,76 +134,81 @@ const AccountList: React.FC = () => {
   };
 
   const handleCancelClick = () => {
+    setAccountData((prev) =>
+      editingRow?.startsWith("temp-")
+        ? prev.filter((row) => row.uuid !== editingRow) // 임시 행만 삭제
+        : prev
+    );
     setButtonState("default");
-    if (editingRow == "") {
-      setAccountData((prev) => prev.filter((row) => row.uuid != editingRow));
-    }
     setEditingRow(null);
     setEditedRow({});
   };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
-    field: keyof IAccount,
-    platform?: keyof medaiAccount,
-    subField?: string
+    field: keyof IAccount
+  ) => {
+    setEditedRow((prev) => ({ ...prev, [field]: e.target.value }));
+    console.log("field:", field, "value:", editedRow[field]);
+  };
+
+  const handleNestedFieldChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+    platform: keyof medaiAccount,
+    subField: string
   ) => {
     const { value } = e.target;
 
     setEditedRow((prev) => {
-      // 중첩 필드를 처리
-      if (platform && subField) {
-        const mediaAccount = prev.mediaAccount || {};
-        const platformData = mediaAccount[platform] || {};
-        return {
-          ...prev,
-          mediaAccount: {
-            ...mediaAccount,
-            [platform]: {
-              ...platformData,
-              [subField]: value,
-            },
-          },
-        };
-      }
+      const updatedRow = { ...prev };
 
-      // 일반 필드를 처리
-      return { ...prev, [field]: value };
+      // 중첩 필드 처리
+      updatedRow.mediaAccount = {
+        ...updatedRow.mediaAccount,
+        [platform]: {
+          ...(updatedRow.mediaAccount?.[platform] || {}),
+          [subField]: value,
+        },
+      };
+
+      return updatedRow;
     });
+    console.log("platform:", platform, "value:", editedRow.mediaAccount);
   };
 
+  // 수정할 데이터행 클릭
   const handleRowClick = (uuid: string) => {
     setEditingRow(uuid); // 수정 중인 행 설정
     const rowToEdit = accountData.find((row) => row.uuid === uuid);
-    setEditedRow({ ...rowToEdit }); // 해당 행 데이터 설정
+    setEditedRow((prev) => ({ ...prev, ...rowToEdit })); // 해당 행 데이터 설정
+    console.log(rowToEdit);
   };
 
+  // 체크박스 체크 여부
   const handleCheckboxChange = (uuid: string) => {
     setSelectedRow((prev) => (prev === uuid ? null : uuid)); // 선택된 행 토글
   };
 
+  // 데이터행 삭제
   const handleDeleteClick = async () => {
     if (!selectedRow) {
       alert("삭제할 항목을 선택해주세요.");
       return;
     }
-
+    // 삭제 재확인
     if (window.confirm("정말 삭제하시겠습니까?")) {
       try {
         // DELETE 요청
         await axios.delete(`/sheet/account/${selectedRow}`, {
           headers: {
-            "Content-Type": "application/json",
+            "Content-Type": "application/x-www-form-urlencoded",
           },
         });
-
         alert("선택한 계정이 삭제되었습니다.");
-
         // 상태에서 삭제된 행 제거
         setAccountData((prevData) =>
           prevData.filter((row) => row.uuid !== selectedRow)
         );
-
         // 선택 상태 초기화
         setSelectedRow(null);
       } catch (error) {
@@ -218,6 +218,9 @@ const AccountList: React.FC = () => {
     }
   };
 
+  //데이터행 수정저장
+  const handleSaveClick = async () => {};
+
   return (
     <div className="container-fluid">
       <div className="mb-2 d-flex justify-content-between">
@@ -225,26 +228,38 @@ const AccountList: React.FC = () => {
           <button className="mr-2 btn btn-outline-secondary">마케터1</button>
           <button className="mr-2 btn btn-outline-secondary">마케터2</button>
         </div>
-        <div>
-          {buttonState === "default" ? (
-            <div>
-              {buttonState === "default" && (
+        <div className="d-flex justify-content-end mb-2">
+          {editingRow || selectedRow ? (
+            <>
+              {editingRow && buttonState !== "register" && (
                 <>
                   <button
-                    className="btn btn-danger mx-2"
+                    className="btn btn-primary mr-2"
+                    onClick={handleSaveClick}
+                  >
+                    저장
+                  </button>
+                  <button
+                    className="btn btn-secondary mr-2"
+                    onClick={handleCancelClick}
+                  >
+                    취소
+                  </button>
+                  <button
+                    className="btn btn-danger"
                     onClick={handleDeleteClick}
                   >
                     삭제
                   </button>
-                  <button
-                    className="btn btn-success mx-2"
-                    onClick={handleAddNew}
-                  >
-                    추가
-                  </button>
                 </>
               )}
-            </div>
+            </>
+          ) : null}
+          {/* 등록 버튼 */}
+          {buttonState === "default" ? (
+            <button className="btn btn-success mx-2" onClick={handleAddNew}>
+              추가
+            </button>
           ) : (
             <>
               <button
@@ -332,13 +347,16 @@ const AccountList: React.FC = () => {
                   onClick={() => handleRowClick(row.uuid)} // 행 클릭 시 수정 모드로 전환
                   style={{
                     backgroundColor:
-                      selectedRow === row.uuid ? "#f0f8ff" : "transparent", // 선택 시 강조
+                      editingRow === row.uuid || selectedRow === row.uuid
+                        ? "#f0f8ff"
+                        : "transparent", // 선택 시 강조
                   }}
                 >
                   <td>
                     <input
                       type="checkbox"
                       checked={selectedRow === row.uuid} // 선택 여부 확인
+                      disabled={buttonState === "register"} // 추가 상태에서는 체크박스
                       onChange={() => handleCheckboxChange(row.uuid)} // 체크박스 선택 처리
                     />
                   </td>
@@ -500,7 +518,7 @@ const AccountList: React.FC = () => {
                           type="text"
                           value={editedRow.mediaAccount?.naver?.id || ""}
                           onChange={(e) =>
-                            handleChange(e, "mediaAccount", "naver", "id")
+                            handleNestedFieldChange(e, "naver", "id")
                           }
                         />
                       </td>
@@ -509,7 +527,7 @@ const AccountList: React.FC = () => {
                           type="text"
                           value={editedRow.mediaAccount?.naver?.pwd || ""}
                           onChange={(e) =>
-                            handleChange(e, "mediaAccount", "naver", "pwd")
+                            handleNestedFieldChange(e, "naver", "pwd")
                           }
                         />
                       </td>
@@ -518,7 +536,7 @@ const AccountList: React.FC = () => {
                           type="text"
                           value={editedRow.mediaAccount?.gfa?.id || ""}
                           onChange={(e) =>
-                            handleChange(e, "mediaAccount", "gfa", "id")
+                            handleNestedFieldChange(e, "gfa", "id")
                           }
                         />
                       </td>
@@ -527,7 +545,7 @@ const AccountList: React.FC = () => {
                           type="text"
                           value={editedRow.mediaAccount?.gfa?.pwd || ""}
                           onChange={(e) =>
-                            handleChange(e, "mediaAccount", "gfa", "pwd")
+                            handleNestedFieldChange(e, "gfa", "pwd")
                           }
                         />
                       </td>
@@ -536,7 +554,7 @@ const AccountList: React.FC = () => {
                           type="text"
                           value={editedRow.mediaAccount?.gfa?.gfaNumber || ""}
                           onChange={(e) =>
-                            handleChange(e, "mediaAccount", "gfa", "gfaNumber")
+                            handleNestedFieldChange(e, "gfa", "gfaNumber")
                           }
                         />
                       </td>
@@ -545,7 +563,7 @@ const AccountList: React.FC = () => {
                           type="text"
                           value={editedRow.mediaAccount?.kakao?.id || ""}
                           onChange={(e) =>
-                            handleChange(e, "mediaAccount", "kakao", "id")
+                            handleNestedFieldChange(e, "kakao", "id")
                           }
                         />
                       </td>
@@ -554,7 +572,7 @@ const AccountList: React.FC = () => {
                           type="text"
                           value={editedRow.mediaAccount?.kakao?.pwd || ""}
                           onChange={(e) =>
-                            handleChange(e, "mediaAccount", "kakao", "pwd")
+                            handleNestedFieldChange(e, "kakao", "pwd")
                           }
                         />
                       </td>
@@ -565,12 +583,7 @@ const AccountList: React.FC = () => {
                             editedRow.mediaAccount?.kakao?.kakaoNumber || ""
                           }
                           onChange={(e) =>
-                            handleChange(
-                              e,
-                              "mediaAccount",
-                              "kakao",
-                              "kakaoNumber"
-                            )
+                            handleNestedFieldChange(e, "kakao", "kakaoNumber")
                           }
                         />
                       </td>
@@ -581,12 +594,7 @@ const AccountList: React.FC = () => {
                             editedRow.mediaAccount?.kakao?.momentNumber || ""
                           }
                           onChange={(e) =>
-                            handleChange(
-                              e,
-                              "mediaAccount",
-                              "kakao",
-                              "momnetNumber"
-                            )
+                            handleNestedFieldChange(e, "kakao", "momnetNumber")
                           }
                         />
                       </td>
@@ -595,7 +603,7 @@ const AccountList: React.FC = () => {
                           type="text"
                           value={editedRow.mediaAccount?.google?.id || ""}
                           onChange={(e) =>
-                            handleChange(e, "mediaAccount", "google", "id")
+                            handleNestedFieldChange(e, "google", "id")
                           }
                         />
                       </td>
@@ -604,7 +612,7 @@ const AccountList: React.FC = () => {
                           type="text"
                           value={editedRow.mediaAccount?.google?.pwd || ""}
                           onChange={(e) =>
-                            handleChange(e, "mediaAccount", "google", "pwd")
+                            handleNestedFieldChange(e, "google", "pwd")
                           }
                         />
                       </td>
@@ -613,7 +621,7 @@ const AccountList: React.FC = () => {
                           type="text"
                           value={editedRow.mediaAccount?.etc?.id || ""}
                           onChange={(e) =>
-                            handleChange(e, "mediaAccount", "etc", "id")
+                            handleNestedFieldChange(e, "etc", "id")
                           }
                         />
                       </td>
@@ -622,14 +630,13 @@ const AccountList: React.FC = () => {
                           type="text"
                           value={editedRow.mediaAccount?.etc?.pwd || ""}
                           onChange={(e) =>
-                            handleChange(e, "mediaAccount", "etc", "pwd")
+                            handleNestedFieldChange(e, "etc", "pwd")
                           }
                         />
                       </td>
                     </>
                   ) : (
                     <>
-                      {/* 광고주 정보 */}
                       <td>{row?.companyName}</td>
                       <td>{row.advertiserName}</td>
                       <td>{row.residentNumber}</td>
