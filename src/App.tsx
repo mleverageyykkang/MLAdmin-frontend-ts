@@ -13,6 +13,7 @@ import AccountList from "./pages/AccountList/AccountList";
 import Commission from "./pages/Commission/Commission";
 import { AuthProvider } from "./providers/authProvider";
 import Deposit from "./pages/Deposit/Deposit";
+import MediaTracking from "pages/MediaTracking/MediaTracking";
 
 const dashboardRoutes = [
   {
@@ -42,7 +43,10 @@ const dashboardRoutes = [
     path: "/tracking",
     name: "매출 트래킹",
     icon: "nc-icon nc-chart-bar-32",
-    layout: "",
+    items: [
+      { path: "/media", name: "매체별", layout: "/tracking" },
+      { path: "/total", name: "종합", layout: "/tracking" },
+    ],
   },
 ];
 
@@ -83,7 +87,8 @@ function App() {
             <Route path="/sheet/2" element={<AccountList />} />
             <Route path="/sheet/3" element={<Deposit />} />
             <Route path="/sheet/4" element={<User />} />
-            <Route path="/tracking" element={<User />} />
+            <Route path="/tracking/media" element={<MediaTracking />} />
+            <Route path="/tracking/total" element={<User />} />
           </Routes>
         </Layout>
       </AuthProvider>

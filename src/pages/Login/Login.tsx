@@ -4,7 +4,6 @@ import logo from "../../assets/img/ml_logo.png";
 import axios from "axios";
 import { useAuth } from "../../providers/authProvider";
 
-
 function LoginPage() {
   const [uid, setUid] = useState(""); // uid의 타입은 TypeScript가 추론
   const [password, setPassword] = useState(""); // password의 타입도 추론
@@ -27,7 +26,7 @@ function LoginPage() {
       }
     } catch (err: any) {
       if (err.response) {
-        alert(err.response.data.result.message || "로그인에 실패했습니다.");
+        // alert(err.response.data.result.message || "로그인에 실패했습니다.");
       }
     }
   };
