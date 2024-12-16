@@ -44,7 +44,6 @@ const AccountList: React.FC = () => {
       try {
         const response = await axios.get("/sheet/account");
         setAccountData(response.data.body);
-        // console.log(response.data.body);
         //203 에러 : 등록된 광고주 계정이 없습니다.
         if (response.data.result.code == 203)
           console.log(response.data.result.message);
@@ -57,10 +56,6 @@ const AccountList: React.FC = () => {
 
   if (userRole === null) {
     return <div>Loading...</div>; // 사용자 역할 로딩 중
-  }
-
-  if (userRole !== "system") {
-    return <div>접근 권한이 없습니다.</div>; // 권한 없는 사용자
   }
 
   const handleRegisterClick = async () => {
@@ -225,8 +220,15 @@ const AccountList: React.FC = () => {
     <div className="container-fluid">
       <div className="mb-2 d-flex justify-content-between">
         <div>
-          <button className="mr-2 btn btn-outline-secondary">마케터1</button>
-          <button className="mr-2 btn btn-outline-secondary">마케터2</button>
+          {(userRole == "system" || userRole == "admin") && (
+            <>
+              <label className="mr-2">이름:</label>
+              <select className="mr-2">
+                <option>마케터1</option>
+                <option>마케터2</option>
+              </select>
+            </>
+          )}
         </div>
         <div className="d-flex justify-content-end mb-2">
           {editingRow || selectedRow ? (

@@ -1,6 +1,6 @@
 import React from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import "./Sidebar.css";
+import "./Sidebar.scss";
 import logo from "../../assets/img/ml_logo.png";
 
 function Sidebar({ routes }: { routes: any[] }) {
