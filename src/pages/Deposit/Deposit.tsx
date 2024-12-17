@@ -7,6 +7,7 @@ import IDeposit, {
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "providers/authProvider";
+import ICharge from "../../common/models/charge/ICharge";
 
 interface User {
   uid: string;
@@ -27,11 +28,30 @@ const Deposit: React.FC = () => {
     depositDate: new Date(),
     taxInvoice: "",
     depositAmount: 0,
+    deductAmount: 0,
     paymentType: "" as paymentType,
     processType: "" as processType,
+    depositDueDate: new Date(),
     charges: [],
     rechargeableAmount: 0,
   });
+  const [chargeData, setChargeData] = useState<ICharge[]>([]);
+  const [newCharge, setNewCharge] = useState({
+    uuid: `temp-${Date.now()}`,
+    createdAt: new Date(),
+    naver: 0,
+    gfa: 0,
+    kakao: 0,
+    moment: 0,
+    google: 0,
+    carot: 0,
+    nosp: 0,
+    meta: 0,
+    dable: 0,
+    remitPay: 0,
+    netSales: 0,
+  });
+
   const [showDeleteModal, setShowDeleteModal] = useState(false); // 모달 상태
   const [deleteInput, setDeleteInput] = useState<string>(""); // 삭제 입력 값
 
@@ -77,19 +97,20 @@ const Deposit: React.FC = () => {
     try {
       const resposne = await axios.get(`/sheet/deposit/${uuid}/charge`);
       const chargeData = resposne.data;
-      console.log("chargeData:", chargeData);
       setSelectedRow((prev) => (prev ? { ...prev, chargeData } : null));
     } catch (error) {
       console.error("Failed to get chargeData:", error);
       alert("충전 데이터를 불러오는데 실패하였습니다.");
     }
   };
-  // 행 클릭 이벤트 처리
-  const handleRowClick = (row: IDeposit) => {
+  // 행 클릭 시
+  const RowClick = (row: IDeposit) => {
     setSelectedRow({ ...row }); // 선택된 데이터 복사
+
     if (row.uuid) {
       getChargeData(row.uuid);
     }
+    //클릭 시 해당 입금칸으로?
   };
 
   // 입력값 변경 처리
@@ -124,14 +145,15 @@ const Deposit: React.FC = () => {
 
   const handleRegisterDeposit = async () => {
     // handle에서 temp로 추가하는 값들은 다 없애고 보내기
+    const { uuid, ...requestData } = newDeposit;
     try {
-      const response = await axios.post("/sheet/deposit", newDeposit, {
+      const response = await axios.post("/sheet/deposit", requestData, {
         withCredentials: true,
       });
       console.log("등록 성공:", response.data);
 
       // 성공적으로 등록한 경우 테이블 업데이트
-      setDepositData((prev) => [...prev, response.data]);
+      setDepositData((prev) => [response.data, ...prev]);
       setNewDeposit({
         uuid: `temp-${Date.now()}`,
         progressDate: new Date(),
@@ -152,9 +174,86 @@ const Deposit: React.FC = () => {
     }
   };
 
-  const handleCancelClick = () => {};
-  const handleRegisterCharge = () => {
-    // handle에서 temp로 추가하는 값들은 다 없애고 보내기
+  const handleDepositCancelClick = () => {
+    setNewDeposit({
+      uuid: `temp-${Date.now()}`,
+      progressDate: new Date(),
+      company: "",
+      depositor: "",
+      depositDate: new Date(),
+      taxInvoice: "",
+      depositAmount: 0,
+      paymentType: "" as paymentType,
+      processType: "" as processType,
+      charges: [],
+      rechargeableAmount: 0,
+    });
+  };
+
+  const handleChargeCancelClick = () => {
+    setNewCharge({
+      uuid: `temp-${Date.now()}`,
+      createdAt: new Date(),
+      naver: 0,
+      gfa: 0,
+      kakao: 0,
+      moment: 0,
+      google: 0,
+      carot: 0,
+      nosp: 0,
+      meta: 0,
+      dable: 0,
+      remitPay: 0,
+      netSales: 0,
+    });
+  };
+
+  const handleRegisterCharge = async () => {
+    console.log(selectedRow?.uuid);
+    const { uuid, ...requestData } = newCharge;
+
+    try {
+      const response = await axios.post(
+        `/sheet/deposit/${selectedRow?.uuid}/charge`,
+        requestData,
+        { withCredentials: true }
+      );
+      console.log("충전 성공:", response.data);
+
+      // 새로운 충전 데이터를 selectedRow.charges에 추가
+      const updatedCharges = [...(selectedRow?.charges || []), response.data];
+
+      // 선택된 행 업데이트
+      setSelectedRow((prev) => prev && { ...prev, charges: updatedCharges });
+
+      // 전체 depositData 상태 업데이트
+      setDepositData((prevData) =>
+        prevData.map((deposit) =>
+          deposit.uuid === selectedRow?.uuid
+            ? { ...deposit, charges: updatedCharges }
+            : deposit
+        )
+      );
+
+      // 새로운 행 초기화
+      setNewCharge({
+        uuid: `temp-${Date.now()}`,
+        createdAt: new Date(),
+        naver: 0,
+        gfa: 0,
+        kakao: 0,
+        moment: 0,
+        google: 0,
+        carot: 0,
+        nosp: 0,
+        meta: 0,
+        dable: 0,
+        remitPay: 0,
+        netSales: 0,
+      });
+    } catch (error) {
+      console.error("Failed to Charge:", error);
+    }
   };
 
   // 삭제 버튼 클릭 -> 모달 표시
@@ -173,10 +272,10 @@ const Deposit: React.FC = () => {
       return;
     }
     try {
-      await axios.delete(`/sheet/deposit/${selectedRow}`, {
-        data: { confirm: deleteInput }, // "삭제" 입력값 request body로 전달
+      await axios.delete(`/sheet/deposit/${selectedRow?.uuid}`, {
+        data: { deleteReason: deleteInput }, // "삭제" 입력값 request body로 전달
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": "application/x-www-form-urlencoded",
         },
       });
       alert("선택한 항목이 삭제되었습니다.");
@@ -219,7 +318,7 @@ const Deposit: React.FC = () => {
         <h5>입금</h5>
         <div>
           {selectedRow ? (
-            <button className="btn btn-success mr-2" onClick={() => {}}>
+            <button className="btn btn-primary mr-2" onClick={() => {}}>
               저장
             </button>
           ) : (
@@ -230,7 +329,12 @@ const Deposit: React.FC = () => {
               등록
             </button>
           )}
-          <button className="btn btn-secondary mr-4">취소</button>
+          <button
+            className="btn btn-secondary mr-4"
+            onClick={handleDepositCancelClick}
+          >
+            취소
+          </button>
         </div>
       </div>
       <div className="card-body table-full-width table-responsive">
@@ -242,14 +346,16 @@ const Deposit: React.FC = () => {
               <th>입금자명</th>
               <th>입금일</th>
               <th>세금계산서</th>
-              <th>입금금액</th>
+              <th>입금액</th>
+              <th>차감액</th>
               <th>결제방식</th>
               <th>처리방식</th>
+              <th>입금예정일</th>
             </tr>
           </thead>
           <tbody>
             {selectedRow ? (
-              // 기존 행 수정 모드
+              // 입금테이블 기존 행 수정 모드
               <tr>
                 {[
                   { field: "progressDate", value: selectedRow.progressDate },
@@ -258,8 +364,13 @@ const Deposit: React.FC = () => {
                   { field: "depositDate", value: selectedRow.depositDate },
                   { field: "taxInvoice", value: selectedRow.taxInvoice },
                   { field: "depositAmount", value: selectedRow.depositAmount },
+                  { field: "deductAmount", value: selectedRow.deductAmount },
                   { field: "paymentType", value: selectedRow.paymentType },
                   { field: "processType", value: selectedRow.processType },
+                  {
+                    field: "depositDueDate",
+                    value: selectedRow.depositDueDate,
+                  },
                 ].map(({ field, value }, index) => (
                   <td key={index}>
                     {field === "paymentType" ? (
@@ -292,19 +403,25 @@ const Deposit: React.FC = () => {
                         <option value={processType.DEFAULT}>기본</option>
                         <option value={processType.PRECHARTE}>선충전</option>
                         <option value={processType.DEDUCT}>차감</option>
+                        <option value="remitPay">송금/결제</option>
                       </select>
                     ) : (
+                      // Input Box
                       <input
                         type={
-                          field === "progressDate" || field === "depositDate"
+                          field === "progressDate" ||
+                          field === "depositDate" ||
+                          field === "depositDueDate"
                             ? "date"
                             : "text"
                         }
                         className="w-100"
                         value={
-                          value instanceof Date
+                          field === "progressDate" ||
+                          field === "depositDate" ||
+                          field === "depositDueDate"
                             ? dayjs(value).format("YYYY-MM-DD")
-                            : value || ""
+                            : value?.toLocaleString("") || ""
                         }
                         onChange={(e) =>
                           handleInputChange(
@@ -323,8 +440,8 @@ const Deposit: React.FC = () => {
                 ))}
               </tr>
             ) : (
-              // 새 행 추가 모드
-              <tr>
+              // 입금테이블 새 행 추가 모드
+              <tr style={{ backgroundColor: "#f0f8ff" }}>
                 {[
                   { field: "progressDate", value: newDeposit.progressDate },
                   { field: "company", value: newDeposit.company },
@@ -332,8 +449,13 @@ const Deposit: React.FC = () => {
                   { field: "depositDate", value: newDeposit.depositDate },
                   { field: "taxInvoice", value: newDeposit.taxInvoice },
                   { field: "depositAmount", value: newDeposit.depositAmount },
+                  { field: "deductAmount", value: newDeposit.deductAmount },
                   { field: "paymentType", value: newDeposit.paymentType },
                   { field: "processType", value: newDeposit.processType },
+                  {
+                    field: "depositDueDate",
+                    value: newDeposit.depositDueDate,
+                  },
                 ].map(({ field, value }, index) => (
                   <td key={index}>
                     {field === "paymentType" ? (
@@ -366,11 +488,14 @@ const Deposit: React.FC = () => {
                         <option value={processType.DEFAULT}>기본</option>
                         <option value={processType.PRECHARTE}>선충전</option>
                         <option value={processType.DEDUCT}>차감</option>
+                        <option value="remitPay">송금/결제</option>
                       </select>
                     ) : (
                       <input
                         type={
-                          field === "progressDate" || field === "depositDate"
+                          field === "progressDate" ||
+                          field === "depositDate" ||
+                          field === "depositDueDate"
                             ? "date"
                             : "text"
                         }
@@ -404,30 +529,38 @@ const Deposit: React.FC = () => {
       {/* 충전 테이블 */}
       <div className="ml-3 d-flex justify-content-between">
         <h5>
-          충전 (충전가능금액:{" "}
+          충전 (사용가능금액:{" "}
           {selectedRow?.rechargeableAmount?.toLocaleString("") || 0} 원)
         </h5>
         <div>
-          {selectedRow ? (
-            <button className="btn btn-success mr-2" onClick={() => {}}>
-              저장
-            </button>
-          ) : (
-            <button
-              className="btn btn-success mr-2"
-              onClick={handleRegisterCharge}
-            >
-              등록
-            </button>
-          )}
-          <button className="btn btn-secondary mr-4">취소</button>
+          <button
+            className="btn btn-primary mr-2"
+            disabled={!selectedRow} // selectedRow가 없으면 비활성화
+            onClick={() => {}}
+          >
+            저장
+          </button>
+          <button
+            className="btn btn-success mr-2"
+            disabled={!selectedRow} // selectedRow가 없으면 비활성화
+            onClick={handleRegisterCharge}
+          >
+            등록
+          </button>
+          <button
+            className="btn btn-secondary mr-4"
+            disabled={!selectedRow} // selectedRow가 없으면 비활성화
+            onClick={handleChargeCancelClick}
+          >
+            취소
+          </button>
         </div>
       </div>
       <div className="card-body table-full-width table-responsive border-bottom mb-4">
         <table className="table">
           <thead>
             <tr className="text-nowrap text-center">
-              <th>생성 시간</th>
+              <th>등록일</th>
               <th>네이버</th>
               <th>네이버GFA</th>
               <th>카카오</th>
@@ -439,16 +572,15 @@ const Deposit: React.FC = () => {
               <th>데이블</th>
               <th>송금/결제</th>
               <th>순매출</th>
+              <th>비고</th>
             </tr>
           </thead>
           <tbody>
+            {/* 충전테이블 기존 행 수정 모드 */}
             {selectedRow?.charges?.map((charge, chargeIndex) => (
               <tr key={charge.uuid || chargeIndex}>
                 {[
-                  {
-                    field: "createdAt",
-                    value: charge.createdAt,
-                  },
+                  { field: "createdAt", value: charge.createdAt },
                   { field: "naver", value: charge.naver },
                   { field: "gfa", value: charge.gfa },
                   { field: "kakao", value: charge.kakao },
@@ -460,23 +592,25 @@ const Deposit: React.FC = () => {
                   { field: "dable", value: charge.dable },
                   { field: "remitPay", value: charge.remitPay },
                   { field: "netSales", value: charge.netSales },
+                  { field: "netSales", value: charge.netSales }, //비고 (note)
                 ].map(({ field, value }, index) => (
                   <td key={`${charge.uuid}-${index}`}>
                     <input
-                      type="text"
+                      type={
+                        field === "createdAt" ? "date" : "text"
+                      } /* 날짜 필드 형식 처리 */
                       className="w-100 text-center"
                       value={
-                        value &&
-                        typeof value === "object" &&
-                        value !== null &&
-                        value instanceof Date
+                        field === "createdAt" && value instanceof Date
                           ? dayjs(value).format("YYYY-MM-DD")
                           : value?.toLocaleString?.() || ""
                       }
                       onChange={(e) =>
                         handleInputChange(
                           field,
-                          parseInt(e.target.value.replace(/,/g, "")) || 0,
+                          field === "createdAt"
+                            ? new Date(e.target.value)
+                            : parseInt(e.target.value.replace(/,/g, "")) || 0,
                           true
                         )
                       }
@@ -485,13 +619,55 @@ const Deposit: React.FC = () => {
                 ))}
               </tr>
             ))}
+
+            {/* 충전테이블 새 행 추가 모드 */}
+            <tr style={{ backgroundColor: "#f0f8ff" }}>
+              {[
+                { field: "createdAt", value: newCharge.createdAt },
+                { field: "naver", value: newCharge.naver },
+                { field: "gfa", value: newCharge.gfa },
+                { field: "kakao", value: newCharge.kakao },
+                { field: "moment", value: newCharge.moment },
+                { field: "google", value: newCharge.google },
+                { field: "carot", value: newCharge.carot },
+                { field: "nosp", value: newCharge.nosp },
+                { field: "meta", value: newCharge.meta },
+                { field: "dable", value: newCharge.dable },
+                { field: "remitPay", value: newCharge.remitPay },
+                { field: "netSales", value: newCharge.netSales },
+                { field: "netSales", value: newCharge.netSales }, //비고(note)
+              ].map(({ field, value }, index) => (
+                <td key={`new-${field}-${index}`}>
+                  <input
+                    type={
+                      field === "createdAt" ? "date" : "text"
+                    } /* 날짜 필드 형식 처리 */
+                    className="w-100 text-center"
+                    value={
+                      field === "createdAt" && value instanceof Date
+                        ? dayjs(value).format("YYYY-MM-DD")
+                        : value?.toLocaleString?.() || ""
+                    }
+                    onChange={(e) =>
+                      setNewCharge((prev) => ({
+                        ...prev,
+                        [field]:
+                          field === "createdAt"
+                            ? new Date(e.target.value)
+                            : parseInt(e.target.value.replace(/,/g, "")) || 0,
+                      }))
+                    }
+                  />
+                </td>
+              ))}
+            </tr>
           </tbody>
         </table>
       </div>
 
       {/* 리스트 테이블 */}
       <div className="ml-3 d-flex justify-content-between">
-        <h5>리스트</h5>
+        <h5>리스트 (데이터 : {depositData.length}개)</h5>
         <div className="align-items-center d-flex">
           <button className="btn btn-danger mr-2" onClick={handleDeleteClick}>
             삭제
@@ -530,13 +706,17 @@ const Deposit: React.FC = () => {
               <th>데이블</th>
               <th>송금/결제</th>
               <th>순매출</th>
+              <th>비고</th>
             </tr>
           </thead>
           <tbody>
             {depositData.map((row) => (
               <tr
                 key={row.uuid}
-                onClick={() => setSelectedRow(row)}
+                onClick={() => {
+                  setSelectedRow(row);
+                  console.log("selectedRow:", selectedRow);
+                }}
                 style={{
                   cursor: "pointer",
                   whiteSpace: "nowrap",
@@ -613,6 +793,8 @@ const Deposit: React.FC = () => {
                     </>
                   );
                 })()}
+                {/* 비고 자리 */}
+                <td></td>
               </tr>
             ))}
           </tbody>
@@ -647,18 +829,22 @@ const Deposit: React.FC = () => {
             className="form-control mb-3"
             placeholder="삭제"
           />
-          <div className="d-flex justify-content-end">
+          <div className="d-flex justify-content-end ">
             <button
-              className="btn btn-secondary mr-2"
+              className="btn btn-danger mr-2"
+              onClick={handleConfirmDelete}
+              disabled={deleteInput !== "삭제"}
+            >
+              확인
+            </button>
+            <button
+              className="btn btn-secondary "
               onClick={() => {
                 setShowDeleteModal(false);
                 setDeleteInput(""); // 입력 초기화
               }}
             >
               취소
-            </button>
-            <button className="btn btn-danger" onClick={handleConfirmDelete}>
-              확인
             </button>
           </div>
         </div>

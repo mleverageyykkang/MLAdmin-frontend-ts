@@ -62,8 +62,12 @@ function Layout({ children }: { children: React.ReactNode }) {
             <Sidebar routes={dashboardRoutes} />
           </div>
           <div style={{ width: "87%" }}>
-            <HeaderNavbar routes={dashboardRoutes} />
-            <div className="p-3">{children}</div>
+            <div style={{ position: "fixed", width: "87%" }}>
+              <HeaderNavbar routes={dashboardRoutes} />
+            </div>
+            <div style={{ marginTop: "85px" }} className="p-3">
+              {children}
+            </div>
           </div>
         </div>
       ) : (
