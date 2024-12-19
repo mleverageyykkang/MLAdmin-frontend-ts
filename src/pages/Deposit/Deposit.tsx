@@ -14,6 +14,18 @@ interface User {
   role: string;
 }
 
+const paymentTypeLabels: Record<string, string> = {
+  card: "카드",
+  transfer: "계좌이체",
+};
+
+const processTypeLabels: Record<string, string> = {
+  default: "기본",
+  precharge: "선충전",
+  deduct: "차감",
+  remitPay: "송금/결제",
+};
+
 const Deposit: React.FC = () => {
   const [userRole, setUserRole] = useState<string | null>(null);
   const { isLoggedIn } = useAuth();
@@ -35,7 +47,6 @@ const Deposit: React.FC = () => {
     charges: [],
     rechargeableAmount: 0,
   });
-  const [chargeData, setChargeData] = useState<ICharge[]>([]);
   const [newCharge, setNewCharge] = useState({
     uuid: `temp-${Date.now()}`,
     createdAt: new Date(),
@@ -50,10 +61,14 @@ const Deposit: React.FC = () => {
     dable: 0,
     remitPay: 0,
     netSales: 0,
+    note: "",
   });
 
   const [showDeleteModal, setShowDeleteModal] = useState(false); // 모달 상태
   const [deleteInput, setDeleteInput] = useState<string>(""); // 삭제 입력 값
+  const [selectedCharge, setSelectedCharge] = useState<ICharge | null>(null);
+  const [isSaveDisabled, setIsSaveDisabled] = useState(true);
+  
 
   //role 확인
   useEffect(() => {
@@ -85,8 +100,25 @@ const Deposit: React.FC = () => {
       }
     };
     getDeposits();
-    console.log("depositData:", depositData);
   }, []);
+
+  // 저장 버튼 활성화 여부 관리
+  useEffect(() => {
+    if (!selectedRow) {
+      setIsSaveDisabled(true);
+      return;
+    }
+
+    const originalData = depositData.find(
+      (deposit) => deposit.uuid === selectedRow.uuid
+    );
+
+    if (originalData) {
+      const isChanged =
+        JSON.stringify(originalData) !== JSON.stringify(selectedRow);
+      setIsSaveDisabled(!isChanged);
+    }
+  }, [selectedRow, depositData]);
 
   if (userRole === null) {
     return <div>Loading...</div>; // 사용자 역할 로딩 중
@@ -95,22 +127,13 @@ const Deposit: React.FC = () => {
   // 선택된 행의 chargeData 불러오기
   const getChargeData = async (uuid: string) => {
     try {
-      const resposne = await axios.get(`/sheet/deposit/${uuid}/charge`);
-      const chargeData = resposne.data;
+      const response = await axios.get(`/sheet/deposit/${uuid}/charge`);
+      const chargeData = response.data;
       setSelectedRow((prev) => (prev ? { ...prev, chargeData } : null));
     } catch (error) {
       console.error("Failed to get chargeData:", error);
       alert("충전 데이터를 불러오는데 실패하였습니다.");
     }
-  };
-  // 행 클릭 시
-  const RowClick = (row: IDeposit) => {
-    setSelectedRow({ ...row }); // 선택된 데이터 복사
-
-    if (row.uuid) {
-      getChargeData(row.uuid);
-    }
-    //클릭 시 해당 입금칸으로?
   };
 
   // 입력값 변경 처리
@@ -120,20 +143,24 @@ const Deposit: React.FC = () => {
     isChargeField: boolean = false
   ) => {
     if (selectedRow) {
-      // 기존 행 수정
-      const updatedRow = {
-        ...selectedRow,
-        ...(isChargeField
-          ? {
-              charges: selectedRow.charges?.map((charge) =>
-                charge.uuid === selectedRow.charges?.[0]?.uuid
-                  ? { ...charge, [field]: value }
-                  : charge
-              ),
-            }
-          : { [field]: value }),
-      };
-      setSelectedRow(updatedRow);
+      if (isChargeField && selectedCharge) {
+        // 충전 테이블의 특정 행 수정
+        const updatedCharges = selectedRow.charges?.map((charge) =>
+          charge.uuid === selectedCharge.uuid
+            ? { ...charge, [field]: value } // 선택된 행만 수정
+            : charge
+        );
+
+        setSelectedRow((prev) =>
+          prev ? { ...prev, charges: updatedCharges } : null
+        );
+        setSelectedCharge(
+          (prev) => (prev ? { ...prev, [field]: value } : null) // 선택된 charge도 업데이트
+        );
+      } else {
+        // 일반 입력 필드 수정
+        setSelectedRow((prev) => (prev ? { ...prev, [field]: value } : null));
+      }
     } else {
       // 새 행 추가
       setNewDeposit((prev) => ({
@@ -175,41 +202,66 @@ const Deposit: React.FC = () => {
   };
 
   const handleDepositCancelClick = () => {
-    setNewDeposit({
-      uuid: `temp-${Date.now()}`,
-      progressDate: new Date(),
-      company: "",
-      depositor: "",
-      depositDate: new Date(),
-      taxInvoice: "",
-      depositAmount: 0,
-      paymentType: "" as paymentType,
-      processType: "" as processType,
-      charges: [],
-      rechargeableAmount: 0,
-    });
+    if (selectedRow) {
+      setSelectedRow(null);
+    } else {
+      setNewDeposit({
+        uuid: `temp-${Date.now()}`,
+        progressDate: new Date(),
+        company: "",
+        depositor: "",
+        depositDate: new Date(),
+        taxInvoice: "",
+        depositAmount: 0,
+        paymentType: "" as paymentType,
+        processType: "" as processType,
+        charges: [],
+        rechargeableAmount: 0,
+      });
+    }
   };
 
   const handleChargeCancelClick = () => {
-    setNewCharge({
-      uuid: `temp-${Date.now()}`,
-      createdAt: new Date(),
-      naver: 0,
-      gfa: 0,
-      kakao: 0,
-      moment: 0,
-      google: 0,
-      carot: 0,
-      nosp: 0,
-      meta: 0,
-      dable: 0,
-      remitPay: 0,
-      netSales: 0,
-    });
+    if (selectedCharge && selectedRow) {
+      // selectedRow에서 선택된 충전 데이터 찾기
+      const originalCharge = selectedRow.charges?.find(
+        (charge) => charge.uuid === selectedCharge.uuid
+      );
+      if (originalCharge) {
+        setSelectedRow((prev) =>
+          prev
+            ? {
+                ...prev,
+                charges: prev.charges?.map((charge) =>
+                  charge.uuid === selectedCharge.uuid ? originalCharge : charge
+                ),
+              }
+            : null
+        );
+      }
+      setSelectedCharge(null); // 선택 초기화
+    } else {
+      // 새로운 충전 데이터로 초기화
+      setNewCharge({
+        uuid: `temp-${Date.now()}`,
+        createdAt: new Date(),
+        naver: 0,
+        gfa: 0,
+        kakao: 0,
+        moment: 0,
+        google: 0,
+        carot: 0,
+        nosp: 0,
+        meta: 0,
+        dable: 0,
+        remitPay: 0,
+        netSales: 0,
+        note: "",
+      });
+    }
   };
 
   const handleRegisterCharge = async () => {
-    console.log(selectedRow?.uuid);
     const { uuid, ...requestData } = newCharge;
 
     try {
@@ -219,13 +271,10 @@ const Deposit: React.FC = () => {
         { withCredentials: true }
       );
       console.log("충전 성공:", response.data);
-
       // 새로운 충전 데이터를 selectedRow.charges에 추가
       const updatedCharges = [...(selectedRow?.charges || []), response.data];
-
       // 선택된 행 업데이트
       setSelectedRow((prev) => prev && { ...prev, charges: updatedCharges });
-
       // 전체 depositData 상태 업데이트
       setDepositData((prevData) =>
         prevData.map((deposit) =>
@@ -234,7 +283,6 @@ const Deposit: React.FC = () => {
             : deposit
         )
       );
-
       // 새로운 행 초기화
       setNewCharge({
         uuid: `temp-${Date.now()}`,
@@ -250,9 +298,12 @@ const Deposit: React.FC = () => {
         dable: 0,
         remitPay: 0,
         netSales: 0,
+        note: "",
       });
-    } catch (error) {
+      alert("충전이 등록되었습니다.");
+    } catch (error: any) {
       console.error("Failed to Charge:", error);
+      alert(error.response.data.result.message);
     }
   };
 
@@ -291,6 +342,114 @@ const Deposit: React.FC = () => {
     }
   };
 
+  const handleChargeCheckboxChange = (charge: ICharge) => {
+    setSelectedCharge((prev) => (prev?.uuid === charge.uuid ? null : charge)); //이미 선택시 해제
+  };
+
+  const handleChargeDelete = async () => {
+    if (window.confirm("선택한 충전 항목을 삭제하시겠습니까?")) {
+      try {
+        // 삭제 API 호출
+        await axios.delete(
+          `/sheet/deposit/${selectedRow?.uuid}/charge/${selectedCharge?.uuid}`,
+          { withCredentials: true }
+        );
+        // UI 갱신
+        const updatedCharges = selectedRow?.charges?.filter(
+          (charge) => charge.uuid !== selectedCharge?.uuid
+        );
+        // 상태 업데이트
+        setSelectedRow((prev) =>
+          prev ? { ...prev, charges: updatedCharges } : null
+        );
+        setDepositData((prevData) =>
+          prevData.map((deposit) =>
+            deposit.uuid === selectedRow?.uuid
+              ? { ...deposit, charges: updatedCharges }
+              : deposit
+          )
+        );
+        setSelectedCharge(null); // 상태 초기화
+        alert("선택한 충전 데이터가 삭제되었습니다.");
+      } catch (error) {
+        console.error("충전 데이터 삭제 실패:", error);
+        alert("충전 데이터를 삭제하는데 실패했습니다.");
+      }
+    }
+  };
+
+  const handleDepositSaveClick = async () => {
+    if (!selectedRow) return;
+    if (window.confirm("수정한 입금 정보를 저장하시겠습니까?")) {
+      try {
+        const { uuid, ...updatedData } = selectedRow; // uuid 제외
+        const response = await axios.put(
+          `/sheet/deposit/${uuid}`,
+          updatedData,
+          {
+            withCredentials: true,
+          }
+        );
+        if (response.status === 200) {
+          alert("입금 데이터가 성공적으로 수정되었습니다.");
+          const updatedDeposit = response.data;
+          // 데이터 업데이트
+          setDepositData((prevData) =>
+            prevData.map((deposit) =>
+              deposit.uuid === uuid
+                ? { ...deposit, ...updatedDeposit }
+                : deposit
+            )
+          );
+          // 서버에서 최신 데이터를 가져와 동기화
+          const refreshedData = await axios.get("/sheet/deposit");
+          setDepositData(refreshedData.data.body);
+          setSelectedRow(null);
+        }
+      } catch (error) {
+        console.error("입금 데이터 수정 실패:", error);
+        alert("입금 데이터를 수정하는데 실패했습니다.");
+      }
+    }
+  };
+  const handleChargeSaveClick = async () => {
+    if (!selectedCharge) {
+      alert("수정할 충전 정보를 선택해주세요.");
+      return;
+    }
+    if (window.confirm("수정한 충전 정보를 저장하시겠습니까?")) {
+      try {
+        const response = await axios.put(
+          `/sheet/deposit/${selectedRow?.uuid}/charge/${selectedCharge.uuid}}`,
+          selectedCharge,
+          { withCredentials: true }
+        );
+        // 서버 응답 데이터로 업데이트
+        const updatedCharge = response.data;
+        if (response.status === 200) {
+          setSelectedRow((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  charges: prev.charges?.map((charge) =>
+                    charge.uuid === updatedCharge.uuid ? updatedCharge : charge
+                  ),
+                }
+              : null
+          );
+          setSelectedCharge(null); //수정 완료 후 초기화
+          alert("충전 정보가 수정되었습니다.");
+        }
+      } catch (error: any) {
+        console.error("충전 정보 수정 실패:", error);
+        alert(
+          error.response.data.result.message ||
+            "충전 정보를 수정하는데 실패했습니다."
+        );
+      }
+    }
+  };
+
   return (
     <div>
       {/* 필터 부분 */}
@@ -318,7 +477,11 @@ const Deposit: React.FC = () => {
         <h5>입금</h5>
         <div>
           {selectedRow ? (
-            <button className="btn btn-primary mr-2" onClick={() => {}}>
+            <button
+              className="btn btn-primary mr-2"
+              onClick={handleDepositSaveClick}
+              disabled={isSaveDisabled}
+            >
               저장
             </button>
           ) : (
@@ -355,7 +518,7 @@ const Deposit: React.FC = () => {
           </thead>
           <tbody>
             {selectedRow ? (
-              // 입금테이블 기존 행 수정 모드
+              // 수정 모드
               <tr>
                 {[
                   { field: "progressDate", value: selectedRow.progressDate },
@@ -380,46 +543,75 @@ const Deposit: React.FC = () => {
                         onChange={(e) =>
                           handleInputChange(
                             field as keyof IDeposit,
-                            e.target.value as paymentType
+                            e.target.value
                           )
                         }
                       >
                         <option value="">선택</option>
-                        <option value={paymentType.CARD}>카드</option>
-                        <option value={paymentType.TRANSFER}>계좌이체</option>
+                        <option value="CARD">카드</option>
+                        <option value="TRANSFER">계좌이체</option>
                       </select>
                     ) : field === "processType" ? (
                       <select
                         className="w-100"
-                        value={value?.toLocaleString() || ""}
+                        value={value?.toLocaleString("") || ""}
                         onChange={(e) =>
                           handleInputChange(
                             field as keyof IDeposit,
-                            e.target.value as processType
+                            e.target.value
                           )
                         }
                       >
                         <option value="">선택</option>
                         <option value={processType.DEFAULT}>기본</option>
-                        <option value={processType.PRECHARTE}>선충전</option>
+                        <option value={processType.PRECHARGE}>선충전</option>
                         <option value={processType.DEDUCT}>차감</option>
-                        <option value="remitPay">송금/결제</option>
+                        <option value={processType.REMITPAY}>송금/결제</option>
                       </select>
+                    ) : field === "deductAmount" ? (
+                      <input
+                        type="text"
+                        className="w-100"
+                        value={value?.toLocaleString("") || ""}
+                        disabled={
+                          selectedRow.processType !== processType.DEDUCT
+                        } // 조건부 비활성화
+                        onChange={(e) =>
+                          handleInputChange(
+                            field as keyof IDeposit,
+                            parseInt(e.target.value) || 0
+                          )
+                        }
+                      />
+                    ) : field === "depositDueDate" ? (
+                      <input
+                        type="date"
+                        className="w-100"
+                        value={
+                          value instanceof Date
+                            ? dayjs(value).format("YYYY-MM-DD")
+                            : value || ""
+                        }
+                        disabled={
+                          selectedRow.processType !== processType.PRECHARGE
+                        } // 조건부 비활성화
+                        onChange={(e) =>
+                          handleInputChange(
+                            field as keyof IDeposit,
+                            new Date(e.target.value)
+                          )
+                        }
+                      />
                     ) : (
-                      // Input Box
                       <input
                         type={
-                          field === "progressDate" ||
-                          field === "depositDate" ||
-                          field === "depositDueDate"
+                          field === "progressDate" || field === "depositDate"
                             ? "date"
                             : "text"
                         }
                         className="w-100"
                         value={
-                          field === "progressDate" ||
-                          field === "depositDate" ||
-                          field === "depositDueDate"
+                          field === "progressDate" || field === "depositDate"
                             ? dayjs(value).format("YYYY-MM-DD")
                             : value?.toLocaleString("") || ""
                         }
@@ -440,7 +632,7 @@ const Deposit: React.FC = () => {
                 ))}
               </tr>
             ) : (
-              // 입금테이블 새 행 추가 모드
+              // 새 행 추가 모드
               <tr style={{ backgroundColor: "#f0f8ff" }}>
                 {[
                   { field: "progressDate", value: newDeposit.progressDate },
@@ -452,10 +644,7 @@ const Deposit: React.FC = () => {
                   { field: "deductAmount", value: newDeposit.deductAmount },
                   { field: "paymentType", value: newDeposit.paymentType },
                   { field: "processType", value: newDeposit.processType },
-                  {
-                    field: "depositDueDate",
-                    value: newDeposit.depositDueDate,
-                  },
+                  { field: "depositDueDate", value: newDeposit.depositDueDate },
                 ].map(({ field, value }, index) => (
                   <td key={index}>
                     {field === "paymentType" ? (
@@ -465,13 +654,13 @@ const Deposit: React.FC = () => {
                         onChange={(e) =>
                           handleInputChange(
                             field as keyof IDeposit,
-                            e.target.value as paymentType
+                            e.target.value
                           )
                         }
                       >
                         <option value="">선택</option>
-                        <option value={paymentType.CARD}>카드</option>
-                        <option value={paymentType.TRANSFER}>계좌이체</option>
+                        <option value="CARD">카드</option>
+                        <option value="TRANSFER">계좌이체</option>
                       </select>
                     ) : field === "processType" ? (
                       <select
@@ -480,22 +669,52 @@ const Deposit: React.FC = () => {
                         onChange={(e) =>
                           handleInputChange(
                             field as keyof IDeposit,
-                            e.target.value as processType
+                            e.target.value
                           )
                         }
                       >
                         <option value="">선택</option>
                         <option value={processType.DEFAULT}>기본</option>
-                        <option value={processType.PRECHARTE}>선충전</option>
+                        <option value={processType.PRECHARGE}>선충전</option>
                         <option value={processType.DEDUCT}>차감</option>
-                        <option value="remitPay">송금/결제</option>
+                        <option value={processType.REMITPAY}>송금/결제</option>
                       </select>
+                    ) : field === "deductAmount" ? (
+                      <input
+                        type="text"
+                        className="w-100"
+                        value={Number(value) || ""}
+                        disabled={newDeposit.processType !== processType.DEDUCT} // 조건부 비활성화
+                        onChange={(e) =>
+                          handleInputChange(
+                            field as keyof IDeposit,
+                            parseInt(e.target.value) || 0
+                          )
+                        }
+                      />
+                    ) : field === "depositDueDate" ? (
+                      <input
+                        type="date"
+                        className="w-100 text-center"
+                        value={
+                          value instanceof Date
+                            ? dayjs(value).format("YYYY-MM-DD")
+                            : value || ""
+                        }
+                        disabled={
+                          newDeposit.processType !== processType.PRECHARGE
+                        } // 조건부 비활성화
+                        onChange={(e) =>
+                          handleInputChange(
+                            field as keyof IDeposit,
+                            new Date(e.target.value)
+                          )
+                        }
+                      />
                     ) : (
                       <input
                         type={
-                          field === "progressDate" ||
-                          field === "depositDate" ||
-                          field === "depositDueDate"
+                          field === "progressDate" || field === "depositDate"
                             ? "date"
                             : "text"
                         }
@@ -510,9 +729,6 @@ const Deposit: React.FC = () => {
                             field as keyof IDeposit,
                             field === "depositAmount"
                               ? parseInt(e.target.value.replace(/,/g, "")) || 0
-                              : field === "progressDate" ||
-                                field === "depositDate"
-                              ? new Date(e.target.value)
                               : e.target.value
                           )
                         }
@@ -535,10 +751,17 @@ const Deposit: React.FC = () => {
         <div>
           <button
             className="btn btn-primary mr-2"
-            disabled={!selectedRow} // selectedRow가 없으면 비활성화
-            onClick={() => {}}
+            disabled={!selectedCharge} // selectedRow가 없으면 비활성화
+            onClick={handleChargeSaveClick}
           >
             저장
+          </button>
+          <button
+            className="btn btn-danger mr-2"
+            onClick={handleChargeDelete}
+            disabled={!selectedCharge}
+          >
+            삭제
           </button>
           <button
             className="btn btn-success mr-2"
@@ -560,6 +783,7 @@ const Deposit: React.FC = () => {
         <table className="table">
           <thead>
             <tr className="text-nowrap text-center">
+              <th>선택</th>
               <th>등록일</th>
               <th>네이버</th>
               <th>네이버GFA</th>
@@ -576,52 +800,16 @@ const Deposit: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {/* 충전테이블 기존 행 수정 모드 */}
-            {selectedRow?.charges?.map((charge, chargeIndex) => (
-              <tr key={charge.uuid || chargeIndex}>
-                {[
-                  { field: "createdAt", value: charge.createdAt },
-                  { field: "naver", value: charge.naver },
-                  { field: "gfa", value: charge.gfa },
-                  { field: "kakao", value: charge.kakao },
-                  { field: "moment", value: charge.moment },
-                  { field: "google", value: charge.google },
-                  { field: "carot", value: charge.carot },
-                  { field: "nosp", value: charge.nosp },
-                  { field: "meta", value: charge.meta },
-                  { field: "dable", value: charge.dable },
-                  { field: "remitPay", value: charge.remitPay },
-                  { field: "netSales", value: charge.netSales },
-                  { field: "netSales", value: charge.netSales }, //비고 (note)
-                ].map(({ field, value }, index) => (
-                  <td key={`${charge.uuid}-${index}`}>
-                    <input
-                      type={
-                        field === "createdAt" ? "date" : "text"
-                      } /* 날짜 필드 형식 처리 */
-                      className="w-100 text-center"
-                      value={
-                        field === "createdAt" && value instanceof Date
-                          ? dayjs(value).format("YYYY-MM-DD")
-                          : value?.toLocaleString?.() || ""
-                      }
-                      onChange={(e) =>
-                        handleInputChange(
-                          field,
-                          field === "createdAt"
-                            ? new Date(e.target.value)
-                            : parseInt(e.target.value.replace(/,/g, "")) || 0,
-                          true
-                        )
-                      }
-                    />
-                  </td>
-                ))}
-              </tr>
-            ))}
-
             {/* 충전테이블 새 행 추가 모드 */}
             <tr style={{ backgroundColor: "#f0f8ff" }}>
+              <td className="text-center">
+                <input
+                  type="checkbox"
+                  checked={selectedCharge?.uuid !== newCharge.uuid}
+                  disabled={selectedCharge?.uuid !== newCharge.uuid}
+                  onChange={() => handleChargeCheckboxChange(newCharge)}
+                />
+              </td>
               {[
                 { field: "createdAt", value: newCharge.createdAt },
                 { field: "naver", value: newCharge.naver },
@@ -633,34 +821,101 @@ const Deposit: React.FC = () => {
                 { field: "nosp", value: newCharge.nosp },
                 { field: "meta", value: newCharge.meta },
                 { field: "dable", value: newCharge.dable },
-                { field: "remitPay", value: newCharge.remitPay },
+                {
+                  field: "remitPay",
+                  value: newCharge.remitPay,
+                  isRemitPayField: true, // 송금/결제 여부 플래그
+                },
                 { field: "netSales", value: newCharge.netSales },
-                { field: "netSales", value: newCharge.netSales }, //비고(note)
-              ].map(({ field, value }, index) => (
-                <td key={`new-${field}-${index}`}>
-                  <input
-                    type={
-                      field === "createdAt" ? "date" : "text"
-                    } /* 날짜 필드 형식 처리 */
-                    className="w-100 text-center"
-                    value={
-                      field === "createdAt" && value instanceof Date
-                        ? dayjs(value).format("YYYY-MM-DD")
-                        : value?.toLocaleString?.() || ""
-                    }
-                    onChange={(e) =>
-                      setNewCharge((prev) => ({
-                        ...prev,
-                        [field]:
-                          field === "createdAt"
-                            ? new Date(e.target.value)
+                { field: "note", value: newCharge.note, isStringField: true }, // 문자열 필드 플래그 추가
+              ].map(
+                ({ field, value, isRemitPayField, isStringField }, index) => (
+                  <td key={`new-${field}-${index}`}>
+                    <input
+                      type={field === "createdAt" ? "date" : "text"} // 날짜 필드 처리
+                      className="w-100"
+                      value={
+                        field === "createdAt" && value instanceof Date
+                          ? dayjs(value).format("YYYY-MM-DD")
+                          : value?.toLocaleString() || ""
+                      }
+                      disabled={
+                        !selectedRow || // selectedRow가 없으면 비활성화
+                        (isRemitPayField &&
+                          selectedRow?.processType !== processType.REMITPAY) // remitPay 조건 처리
+                      }
+                      onChange={(e) =>
+                        setNewCharge((prev) => ({
+                          ...prev,
+                          [field]: isStringField
+                            ? e.target.value // 문자열 필드 처리
                             : parseInt(e.target.value.replace(/,/g, "")) || 0,
-                      }))
-                    }
+                        }))
+                      }
+                    />
+                  </td>
+                )
+              )}
+            </tr>
+            {/* 충전테이블 기존 행 수정 모드 */}
+            {selectedRow?.charges?.map((charge, chargeIndex) => (
+              <tr key={charge.uuid || chargeIndex}>
+                <td className="text-center">
+                  <input
+                    type="checkbox"
+                    checked={selectedCharge?.uuid === charge.uuid} // 선택된 데이터 체크
+                    onChange={() => handleChargeCheckboxChange(charge)} // 객체 전달
                   />
                 </td>
-              ))}
-            </tr>
+                {[
+                  { field: "createdAt", value: charge.createdAt },
+                  { field: "naver", value: charge.naver },
+                  { field: "gfa", value: charge.gfa },
+                  { field: "kakao", value: charge.kakao },
+                  { field: "moment", value: charge.moment },
+                  { field: "google", value: charge.google },
+                  { field: "carot", value: charge.carot },
+                  { field: "nosp", value: charge.nosp },
+                  { field: "meta", value: charge.meta },
+                  { field: "dable", value: charge.dable },
+                  {
+                    field: "remitPay",
+                    value: charge.remitPay,
+                    isRemitPayField: true, // 송금/결제 여부 플래그
+                  },
+                  { field: "netSales", value: charge.netSales },
+                  { field: "note", value: charge.note, isStringField: true }, // 문자열 필드 플래그 추가
+                ].map(
+                  ({ field, value, isRemitPayField, isStringField }, index) => (
+                    <td key={`${charge.uuid}-${index}`}>
+                      <input
+                        type={field === "createdAt" ? "text" : "text"} // 날짜 필드 처리
+                        className="w-100"
+                        value={
+                          field === "createdAt"
+                            ? dayjs(value).format("YYYY-MM-DD")
+                            : value?.toLocaleString("") || ""
+                        }
+                        disabled={
+                          selectedCharge?.uuid !== charge.uuid || // selectedRow가 없으면 비활성화
+                          (isRemitPayField &&
+                            selectedRow?.processType !== processType.REMITPAY) // remitPay 조건 처리
+                        }
+                        onChange={(e) =>
+                          handleInputChange(
+                            field,
+                            isStringField
+                              ? e.target.value
+                              : parseInt(e.target.value.replace(/,/g, "")) || 0, // 문자열 필드 처리
+                            true
+                          )
+                        }
+                      />
+                    </td>
+                  )
+                )}
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
@@ -691,7 +946,7 @@ const Deposit: React.FC = () => {
               <th>입금일</th>
               <th>세금계산서</th>
               <th>입금금액</th>
-              <th>충전 가능 금액</th>
+              <th>사용 가능 금액</th>
               <th>차감 금액</th>
               <th>결제방식</th>
               <th>처리방식</th>
@@ -715,7 +970,9 @@ const Deposit: React.FC = () => {
                 key={row.uuid}
                 onClick={() => {
                   setSelectedRow(row);
-                  console.log("selectedRow:", selectedRow);
+                  if (selectedRow?.uuid) {
+                    getChargeData(selectedRow?.uuid);
+                  }
                 }}
                 style={{
                   cursor: "pointer",
@@ -744,8 +1001,10 @@ const Deposit: React.FC = () => {
                 <td>{row.depositAmount?.toLocaleString()}</td>
                 <td>{row.rechargeableAmount?.toLocaleString()}</td>
                 <td>{row.deductAmount?.toLocaleString()}</td>
-                <td>{row.paymentType}</td>
-                <td>{row.processType}</td>
+                <td>
+                  {paymentTypeLabels[row.paymentType] || row.paymentType}{" "}
+                </td>
+                <td>{processTypeLabels[row.processType] || row.processType}</td>
                 {(() => {
                   const totals = row.charges?.reduce(
                     (acc, charge) => {
@@ -800,6 +1059,7 @@ const Deposit: React.FC = () => {
           </tbody>
         </table>
       </div>
+
       {/* 삭제 확인 모달 */}
       {showDeleteModal && (
         <div

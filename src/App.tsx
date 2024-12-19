@@ -14,6 +14,8 @@ import Commission from "./pages/Commission/Commission";
 import { AuthProvider } from "./providers/authProvider";
 import Deposit from "./pages/Deposit/Deposit";
 import MediaTracking from "pages/MediaTracking/MediaTracking";
+import Adjustment from "pages/Adjustment/Adjustment";
+import TotalTracking from "pages/TotalTracking/TotalTracking";
 
 const dashboardRoutes = [
   {
@@ -62,7 +64,7 @@ function Layout({ children }: { children: React.ReactNode }) {
             <Sidebar routes={dashboardRoutes} />
           </div>
           <div style={{ width: "87%" }}>
-            <div style={{ position: "fixed", width: "87%" }}>
+            <div style={{ position: "fixed", width: "87%", zIndex: "9999" }}>
               <HeaderNavbar routes={dashboardRoutes} />
             </div>
             <div style={{ marginTop: "85px" }} className="p-3">
@@ -90,9 +92,9 @@ function App() {
             <Route path="/sheet/1" element={<Commission />} />
             <Route path="/sheet/2" element={<AccountList />} />
             <Route path="/sheet/3" element={<Deposit />} />
-            <Route path="/sheet/4" element={<User />} />
+            <Route path="/sheet/4" element={<Adjustment />} />
             <Route path="/tracking/media" element={<MediaTracking />} />
-            <Route path="/tracking/total" element={<User />} />
+            <Route path="/tracking/total" element={<TotalTracking />} />
           </Routes>
         </Layout>
       </AuthProvider>
