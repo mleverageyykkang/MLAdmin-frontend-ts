@@ -61,14 +61,6 @@ const User: React.FC = () => {
     fetchPos();
   }, []);
 
-  // 데이터행 수정
-  const handleEditClick = (id: string) => {
-    if (editingRow === id) return;
-    setEditingRow(id);
-    const rowToEdit = data.find((row) => row.uid === id);
-    setEditedRow((prev) => ({ ...prev, ...rowToEdit }));
-  };
-
   // 데이터행 저장
   const handleSaveClick = async () => {
     if (!editingRow) return;
@@ -262,7 +254,7 @@ const User: React.FC = () => {
       <div className="d-flex justify-content-end mb-2">
         {editingRow || selectedRow ? (
           <>
-            {editingRow && buttonState !== "register" && (
+            {editingRow && buttonState !== "register" && selectedRow && (
               <>
                 <button
                   className="btn btn-primary mr-2"
@@ -332,7 +324,6 @@ const User: React.FC = () => {
               {currenPageData.map((row) => (
                 <tr
                   key={row.uid}
-                  onClick={() => handleEditClick(row.uid)}
                   style={{
                     backgroundColor:
                       editingRow === row.uid || selectedRow === row.uid
@@ -346,10 +337,22 @@ const User: React.FC = () => {
                       type="checkbox"
                       checked={selectedRow === row.uid}
                       disabled={buttonState === "register"} // 추가 상태에서는 체크박스 비활성화
-                      onChange={() => handleCheckboxChange(row.uid)}
+                      onChange={() => {
+                        if (selectedRow === row.uuid) {
+                          // 이미 선택된 상태 => 수정모드 off
+                          setSelectedRow(null);
+                          setEditingRow(null);
+                          setEditedRow({});
+                        } else {
+                          // 체크박스 선택 => 수정모드 on
+                          handleCheckboxChange(row.uid);
+                          setEditingRow(row.uid);
+                          setEditedRow((prev) => ({ ...prev, ...row }));
+                        }
+                      }}
                     />
                   </td>
-                  {editingRow === row.uid ? (
+                  {editingRow === row.uid && selectedRow ? (
                     <>
                       <td>
                         <input

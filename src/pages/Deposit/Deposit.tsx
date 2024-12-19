@@ -68,9 +68,13 @@ const Deposit: React.FC = () => {
   const [deleteInput, setDeleteInput] = useState<string>(""); // 삭제 입력 값
   const [selectedCharge, setSelectedCharge] = useState<ICharge | null>(null);
   const [isSaveDisabled, setIsSaveDisabled] = useState(true);
-  
+  const [marketerList, setMarketerList] = useState<
+    { uid: string; name: string }[]
+  >([]); // departmentUuid가 3인 데이터 목록
+  const [selectedMarketer, setSelectedMarketer] = useState<string>(""); // 선택된 마케터 UUID
 
   //role 확인
+
   useEffect(() => {
     const fetchUserRole = async () => {
       try {
@@ -79,27 +83,54 @@ const Deposit: React.FC = () => {
         });
         const user: User = response.data.context.user;
         setUserRole(user.role);
+
+        console.log(user);
+        // system 이나 admin 일 때, 마케터 목록 가져오기
+        if (user.role === "admin" || user.role === "system") {
+          const response = await axios.get("/user");
+          const marketerResponse = response.data.body;
+          const marketers = marketerResponse
+            .filter((marketer: any) => marketer.departmentUuid === "3")
+            .map((maketer: any) => ({ uid: maketer.uid, name: maketer.name }));
+          setMarketerList(marketers);
+        }
       } catch (err) {
         console.error("Error fetching user role:", err);
-        alert("권한이 없습니다.");
-        navigate("/");
+        // alert("권한이 없습니다.");
+        // navigate("/");
       }
     };
     fetchUserRole();
   }, [isLoggedIn]);
 
   //전체입금내역 불러오기
+  const getDeposits = async (marketerUid = "") => {
+    try {
+      const url = marketerUid
+        ? `/sheet/deposit?marketerUid=${marketerUid}`
+        : "/sheet/deposit";
+      const response = await axios.get(url);
+
+      const data = Array.isArray(response.data.body) ? response.data.body : [];
+      setDepositData(response.data.body);
+      console.log("depositData :", depositData);
+      if (response.status === 203) alert(response.data.body);
+    } catch (error) {
+      console.error("Failed to get DepositData: ", error);
+      alert("전체 입금 데이터를 불러오는데 실패하였습니다.");
+      setDepositData([]); // 오류 발생 시 빈 배열로 설정
+    }
+  };
+
+  // 필터 변경 처리
+  const handleMarketerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const marketerUuid = e.target.value;
+    setSelectedMarketer(marketerUuid);
+    getDeposits(marketerUuid); // 필터 적용된 데이터 가져오기
+  };
+
   useEffect(() => {
-    const getDeposits = async () => {
-      try {
-        const response = await axios.get("/sheet/deposit");
-        setDepositData(response.data.body);
-      } catch (error) {
-        console.error("Failed to get DepositData: ", error);
-        alert("전체 입금 데이터를 불러오는데 실패하였습니다.");
-      }
-    };
-    getDeposits();
+    getDeposits(); //초기 데이터 로드
   }, []);
 
   // 저장 버튼 활성화 여부 관리
@@ -123,18 +154,6 @@ const Deposit: React.FC = () => {
   if (userRole === null) {
     return <div>Loading...</div>; // 사용자 역할 로딩 중
   }
-
-  // 선택된 행의 chargeData 불러오기
-  const getChargeData = async (uuid: string) => {
-    try {
-      const response = await axios.get(`/sheet/deposit/${uuid}/charge`);
-      const chargeData = response.data;
-      setSelectedRow((prev) => (prev ? { ...prev, chargeData } : null));
-    } catch (error) {
-      console.error("Failed to get chargeData:", error);
-      alert("충전 데이터를 불러오는데 실패하였습니다.");
-    }
-  };
 
   // 입력값 변경 처리
   const handleInputChange = (
@@ -172,8 +191,15 @@ const Deposit: React.FC = () => {
 
   const handleRegisterDeposit = async () => {
     // handle에서 temp로 추가하는 값들은 다 없애고 보내기
-    const { uuid, ...requestData } = newDeposit;
     try {
+      let requestData;
+      if (newDeposit.processType !== processType.PRECHARGE) {
+        const { uuid, depositDueDate, ...rest } = newDeposit;
+        requestData = { ...rest };
+      } else {
+        const { uuid, ...rest } = newDeposit;
+        requestData = { ...rest };
+      }
       const response = await axios.post("/sheet/deposit", requestData, {
         withCredentials: true,
       });
@@ -195,9 +221,9 @@ const Deposit: React.FC = () => {
         rechargeableAmount: 0,
       });
       alert("입금이 등록되었습니다.");
-    } catch (error) {
+    } catch (error: any) {
       console.error("등록 실패:", error);
-      alert("입금 등록에 실패했습니다.");
+      alert(error.response.data.result.message || "입금 등록에 실패했습니다.");
     }
   };
 
@@ -316,7 +342,7 @@ const Deposit: React.FC = () => {
     setShowDeleteModal(true); // 모달 열기
   };
 
-  // 삭제 수행
+  // 모달에서 삭제 수행
   const handleConfirmDelete = async () => {
     if (deleteInput !== "삭제") {
       alert("삭제를 정확히 입력해주세요.");
@@ -342,10 +368,12 @@ const Deposit: React.FC = () => {
     }
   };
 
+  // 충전 테이블 체크박스 관리
   const handleChargeCheckboxChange = (charge: ICharge) => {
     setSelectedCharge((prev) => (prev?.uuid === charge.uuid ? null : charge)); //이미 선택시 해제
   };
 
+  // 충전 정보 삭제
   const handleChargeDelete = async () => {
     if (window.confirm("선택한 충전 항목을 삭제하시겠습니까?")) {
       try {
@@ -378,6 +406,7 @@ const Deposit: React.FC = () => {
     }
   };
 
+  // 입금 테이블 수정
   const handleDepositSaveClick = async () => {
     if (!selectedRow) return;
     if (window.confirm("수정한 입금 정보를 저장하시겠습니까?")) {
@@ -412,6 +441,8 @@ const Deposit: React.FC = () => {
       }
     }
   };
+
+  // 충전 테이블 수정
   const handleChargeSaveClick = async () => {
     if (!selectedCharge) {
       alert("수정할 충전 정보를 선택해주세요.");
@@ -464,9 +495,17 @@ const Deposit: React.FC = () => {
         {(userRole == "system" || userRole == "admin") && (
           <>
             <label className="mr-2">이름:</label>
-            <select className="mr-2">
-              <option value="marketer1">마케터1</option>
-              <option value="marketer2">마케터2</option>
+            <select
+              className="mr-2"
+              value={selectedMarketer}
+              onChange={handleMarketerChange}
+            >
+              <option value="">전체</option>
+              {marketerList.map((marketer: any) => (
+                <option key={marketer.uuid} value={marketer.uuid}>
+                  {marketer.name}
+                </option>
+              ))}
             </select>
           </>
         )}
@@ -922,7 +961,10 @@ const Deposit: React.FC = () => {
 
       {/* 리스트 테이블 */}
       <div className="ml-3 d-flex justify-content-between">
-        <h5>리스트 (데이터 : {depositData.length}개)</h5>
+        <h5>
+          리스트 (데이터 : {Array.isArray(depositData) ? depositData.length : 0}
+          개)
+        </h5>
         <div className="align-items-center d-flex">
           <button className="btn btn-danger mr-2" onClick={handleDeleteClick}>
             삭제
@@ -965,97 +1007,99 @@ const Deposit: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {depositData.map((row) => (
-              <tr
-                key={row.uuid}
-                onClick={() => {
-                  setSelectedRow(row);
-                  if (selectedRow?.uuid) {
-                    getChargeData(selectedRow?.uuid);
-                  }
-                }}
-                style={{
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                  textAlign: "center",
-                }}
-              >
-                <td>
-                  <input
-                    type="checkbox"
-                    checked={selectedRow === row}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedRow(row);
-                      } else {
-                        setSelectedRow(null);
+            {Array.isArray(depositData) &&
+              depositData.map((row) => (
+                <tr
+                  key={row.uuid}
+                  onClick={() => {
+                    setSelectedRow(row);
+                  }}
+                  style={{
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                    textAlign: "center",
+                  }}
+                >
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={selectedRow === row}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedRow(row);
+                        } else {
+                          setSelectedRow(null);
+                        }
+                      }}
+                    />
+                  </td>
+                  <td>{dayjs(row.progressDate).format("YYYY-MM-DD")}</td>
+                  <td>{row.company}</td>
+                  <td>{row.depositor}</td>
+                  <td>{dayjs(row.depositDate).format("YYYY-MM-DD")}</td>
+                  <td>{row.taxInvoice}</td>
+                  <td>{row.depositAmount?.toLocaleString()}</td>
+                  <td>{row.rechargeableAmount?.toLocaleString()}</td>
+                  <td>{row.deductAmount?.toLocaleString()}</td>
+                  <td>
+                    {paymentTypeLabels[row.paymentType] || row.paymentType}{" "}
+                  </td>
+                  <td>
+                    {processTypeLabels[row.processType] || row.processType}
+                  </td>
+                  {(() => {
+                    const totals = row.charges?.reduce(
+                      (acc, charge) => {
+                        acc.naver += charge.naver || 0;
+                        acc.gfa += charge.gfa || 0;
+                        acc.kakao += charge.kakao || 0;
+                        acc.moment += charge.moment || 0;
+                        acc.google += charge.google || 0;
+                        acc.carot += charge.carot || 0;
+                        acc.nosp += charge.nosp || 0;
+                        acc.meta += charge.meta || 0;
+                        acc.dable += charge.dable || 0;
+                        acc.remitPay += charge.remitPay || 0;
+                        acc.netSales += charge.netSales || 0;
+                        acc.note += charge.note || "";
+                        return acc;
+                      },
+                      {
+                        naver: 0,
+                        gfa: 0,
+                        kakao: 0,
+                        moment: 0,
+                        google: 0,
+                        carot: 0,
+                        nosp: 0,
+                        meta: 0,
+                        dable: 0,
+                        remitPay: 0,
+                        netSales: 0,
+                        note: "",
                       }
-                    }}
-                  />
-                </td>
-                <td>{dayjs(row.progressDate).format("YYYY-MM-DD")}</td>
-                <td>{row.company}</td>
-                <td>{row.depositor}</td>
-                <td>{dayjs(row.depositDate).format("YYYY-MM-DD")}</td>
-                <td>{row.taxInvoice}</td>
-                <td>{row.depositAmount?.toLocaleString()}</td>
-                <td>{row.rechargeableAmount?.toLocaleString()}</td>
-                <td>{row.deductAmount?.toLocaleString()}</td>
-                <td>
-                  {paymentTypeLabels[row.paymentType] || row.paymentType}{" "}
-                </td>
-                <td>{processTypeLabels[row.processType] || row.processType}</td>
-                {(() => {
-                  const totals = row.charges?.reduce(
-                    (acc, charge) => {
-                      acc.naver += charge.naver || 0;
-                      acc.gfa += charge.gfa || 0;
-                      acc.kakao += charge.kakao || 0;
-                      acc.moment += charge.moment || 0;
-                      acc.google += charge.google || 0;
-                      acc.carot += charge.carot || 0;
-                      acc.nosp += charge.nosp || 0;
-                      acc.meta += charge.meta || 0;
-                      acc.dable += charge.dable || 0;
-                      acc.remitPay += charge.remitPay || 0;
-                      acc.netSales += charge.netSales || 0;
-                      return acc;
-                    },
-                    {
-                      naver: 0,
-                      gfa: 0,
-                      kakao: 0,
-                      moment: 0,
-                      google: 0,
-                      carot: 0,
-                      nosp: 0,
-                      meta: 0,
-                      dable: 0,
-                      remitPay: 0,
-                      netSales: 0,
-                    }
-                  );
+                    );
 
-                  return (
-                    <>
-                      <td>{totals?.naver.toLocaleString()}</td>
-                      <td>{totals?.gfa.toLocaleString()}</td>
-                      <td>{totals?.kakao.toLocaleString()}</td>
-                      <td>{totals?.moment.toLocaleString()}</td>
-                      <td>{totals?.google.toLocaleString()}</td>
-                      <td>{totals?.carot.toLocaleString()}</td>
-                      <td>{totals?.nosp.toLocaleString()}</td>
-                      <td>{totals?.meta.toLocaleString()}</td>
-                      <td>{totals?.dable.toLocaleString()}</td>
-                      <td>{totals?.remitPay.toLocaleString()}</td>
-                      <td>{totals?.netSales.toLocaleString()}</td>
-                    </>
-                  );
-                })()}
-                {/* 비고 자리 */}
-                <td></td>
-              </tr>
-            ))}
+                    return (
+                      <>
+                        <td>{totals?.naver.toLocaleString()}</td>
+                        <td>{totals?.gfa.toLocaleString()}</td>
+                        <td>{totals?.kakao.toLocaleString()}</td>
+                        <td>{totals?.moment.toLocaleString()}</td>
+                        <td>{totals?.google.toLocaleString()}</td>
+                        <td>{totals?.carot.toLocaleString()}</td>
+                        <td>{totals?.nosp.toLocaleString()}</td>
+                        <td>{totals?.meta.toLocaleString()}</td>
+                        <td>{totals?.dable.toLocaleString()}</td>
+                        <td>{totals?.remitPay.toLocaleString()}</td>
+                        <td>{totals?.netSales.toLocaleString()}</td>
+                        <td>{totals?.note.toLocaleString()}</td>
+                      </>
+                    );
+                  })()}
+                  {/* 비고 자리 */}
+                </tr>
+              ))}
           </tbody>
         </table>
       </div>

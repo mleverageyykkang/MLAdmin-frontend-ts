@@ -113,7 +113,7 @@ function Dashboard() {
       <Container fluid>
         <Row>
           <Col lg="3" sm="6">
-            <Card className="card-stats">
+            {/* <Card className="card-stats">
               <Card.Body>
                 <Row>
                   <Col xs="5">
@@ -136,11 +136,11 @@ function Dashboard() {
                   Update Now
                 </div>
               </Card.Footer>
-            </Card>
+            </Card> */}
           </Col>
         </Row>
         <Row>
-          <Col md="8">
+          <Col md="6">
             <Card>
               <Card.Header>
                 <Card.Title as="h4">Users Behavior</Card.Title>
@@ -170,7 +170,7 @@ function Dashboard() {
               </Card.Footer>
             </Card>
           </Col>
-          <Col md="4">
+          <Col md="6">
             <Card>
               <Card.Header>
                 <Card.Title as="h4">Email Statistics</Card.Title>

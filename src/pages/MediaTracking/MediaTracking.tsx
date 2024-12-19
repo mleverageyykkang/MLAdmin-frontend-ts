@@ -1,4 +1,5 @@
 import React from "react";
+import "./MediaTracking.module.scss";
 
 const MediaTracking: React.FC = () => {
   return (
@@ -10,7 +11,6 @@ const MediaTracking: React.FC = () => {
           <option>마케터1</option>
           <option>마케터2</option>
         </select>
-
         <label className="mr-2 ml-3">기간</label>
         <select className="mr-2">
           <option>2024년</option>
