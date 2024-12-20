@@ -26,7 +26,13 @@ const processTypeLabels: Record<string, string> = {
   remitPay: "송금/결제",
 };
 
+const years = Array.from({ length: 6 }, (_, i) => dayjs().year() + i); // 연도 범위 생성 (현재 연도 +/- 5)
+const months = Array.from({ length: 12 }, (_, i) => i + 1); // 월 범위 생성
+const currentYear = dayjs().year();
+const currentMonth = dayjs().month() + 1;
+
 const Deposit: React.FC = () => {
+  const [userId, setUserId] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const { isLoggedIn } = useAuth();
   const navigate = useNavigate();
@@ -72,66 +78,73 @@ const Deposit: React.FC = () => {
     { uid: string; name: string }[]
   >([]); // departmentUuid가 3인 데이터 목록
   const [selectedMarketer, setSelectedMarketer] = useState<string>(""); // 선택된 마케터 UUID
+  const [selectedYear, setSelectedYear] = useState<number>(currentYear);
+  const [selectedMonth, setSelectedMonth] = useState<number>(currentMonth);
+  // const [highlightrow, setHighlightrow] = useState<string | null>(null);
 
   //role 확인
-
-  useEffect(() => {
-    const fetchUserRole = async () => {
-      try {
-        const response = await axios.get("/sheet/deposit", {
-          withCredentials: true,
-        });
-        const user: User = response.data.context.user;
-        setUserRole(user.role);
-
-        console.log(user);
-        // system 이나 admin 일 때, 마케터 목록 가져오기
-        if (user.role === "admin" || user.role === "system") {
-          const response = await axios.get("/user");
-          const marketerResponse = response.data.body;
-          const marketers = marketerResponse
-            .filter((marketer: any) => marketer.departmentUuid === "3")
-            .map((maketer: any) => ({ uid: maketer.uid, name: maketer.name }));
-          setMarketerList(marketers);
+  const fetchUserRole = async () => {
+    try {
+      const response = await axios.get("/user", {
+        withCredentials: true,
+      });
+      const user: User = response.data.context.user;
+      setUserRole(user.role);
+      setUserId(user.uid);
+      // system 이나 admin 일 때, 마케터 목록 가져오기
+      if (user.role === "admin" || user.role === "system") {
+        const marketerResponse = response.data.body;
+        const marketers = marketerResponse
+          .filter((marketer: any) => marketer.departmentUuid === "3")
+          .map((maketer: any) => ({ uid: maketer.uid, name: maketer.name }));
+        setMarketerList(marketers);
+        if (marketerList.length >= 0 && !selectedMarketer) {
+          setSelectedMarketer(marketers[0].uid);
         }
-      } catch (err) {
-        console.error("Error fetching user role:", err);
-        // alert("권한이 없습니다.");
-        // navigate("/");
       }
-    };
-    fetchUserRole();
-  }, [isLoggedIn]);
+    } catch (err) {
+      console.error("로그인한 유저 정보 로드 실패:", err);
+    }
+  };
 
   //전체입금내역 불러오기
   const getDeposits = async (marketerUid = "") => {
     try {
-      const url = marketerUid
-        ? `/sheet/deposit?marketerUid=${marketerUid}`
-        : "/sheet/deposit";
+      const url = `/sheet/deposit?marketerUid=${marketerUid}&year=${selectedYear}&month=${selectedMonth}`;
       const response = await axios.get(url);
-
-      const data = Array.isArray(response.data.body) ? response.data.body : [];
       setDepositData(response.data.body);
-      console.log("depositData :", depositData);
-      if (response.status === 203) alert(response.data.body);
+      console.log(depositData, url);
+      if (response.status === 203) console.error(response.data.body);
     } catch (error) {
       console.error("Failed to get DepositData: ", error);
-      alert("전체 입금 데이터를 불러오는데 실패하였습니다.");
-      setDepositData([]); // 오류 발생 시 빈 배열로 설정
     }
   };
 
-  // 필터 변경 처리
-  const handleMarketerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const marketerUuid = e.target.value;
-    setSelectedMarketer(marketerUuid);
-    getDeposits(marketerUuid); // 필터 적용된 데이터 가져오기
-  };
-
+  // 초기 데이터 로드
   useEffect(() => {
-    getDeposits(); //초기 데이터 로드
-  }, []);
+    const initializeData = async () => {
+      await fetchUserRole(); // userRole과 userId를 설정
+      console.log(userId, userRole);
+      if (userRole && userId) {
+        // userRole에 따라 적절한 데이터를 가져옴
+        if (userRole === "user") {
+          getDeposits(userId); // userId로 데이터를 가져옴
+        } else if (userRole === "admin" || userRole === "system") {
+          if (selectedMarketer) {
+            getDeposits(selectedMarketer); // selectedMarketer로 데이터를 가져옴
+          }
+        }
+      }
+    };
+    initializeData();
+  }, [selectedMarketer, userRole, userId, selectedYear, selectedMonth]);
+
+  // 마케터 필터 변경 처리
+  const handleMarketerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const marketerUid = e.target.value;
+    setSelectedMarketer(marketerUid);
+    getDeposits(marketerUid); // 적용된 데이터 가져오기
+  };
 
   // 저장 버튼 활성화 여부 관리
   useEffect(() => {
@@ -139,11 +152,9 @@ const Deposit: React.FC = () => {
       setIsSaveDisabled(true);
       return;
     }
-
     const originalData = depositData.find(
       (deposit) => deposit.uuid === selectedRow.uuid
     );
-
     if (originalData) {
       const isChanged =
         JSON.stringify(originalData) !== JSON.stringify(selectedRow);
@@ -188,7 +199,6 @@ const Deposit: React.FC = () => {
       }));
     }
   };
-
   const handleRegisterDeposit = async () => {
     // handle에서 temp로 추가하는 값들은 다 없애고 보내기
     try {
@@ -206,7 +216,21 @@ const Deposit: React.FC = () => {
       console.log("등록 성공:", response.data);
 
       // 성공적으로 등록한 경우 테이블 업데이트
+
       setDepositData((prev) => [response.data, ...prev]);
+      if (userRole && userId) {
+        // userRole에 따라 적절한 데이터를 가져옴
+        if (userRole === "user") {
+          getDeposits(userId); // userId로 데이터를 가져옴
+        } else if (userRole === "admin" || userRole === "system") {
+          if (selectedMarketer) {
+            getDeposits(selectedMarketer); // selectedMarketer로 데이터를 가져옴
+          }
+        }
+      }
+      console.log("등록 후 data:", depositData);
+      // setHighlightrow(depositData[depositData.length -1].uuid);
+      // console.log("highlightrow:", highlightrow);
       setNewDeposit({
         uuid: `temp-${Date.now()}`,
         progressDate: new Date(),
@@ -220,7 +244,6 @@ const Deposit: React.FC = () => {
         charges: [],
         rechargeableAmount: 0,
       });
-      alert("입금이 등록되었습니다.");
     } catch (error: any) {
       console.error("등록 실패:", error);
       alert(error.response.data.result.message || "입금 등록에 실패했습니다.");
@@ -297,19 +320,30 @@ const Deposit: React.FC = () => {
         { withCredentials: true }
       );
       console.log("충전 성공:", response.data);
-      // 새로운 충전 데이터를 selectedRow.charges에 추가
+
+      // 새로운 충전 데이터를 추가한 충전 배열 생성
       const updatedCharges = [...(selectedRow?.charges || []), response.data];
+
       // 선택된 행 업데이트
-      setSelectedRow((prev) => prev && { ...prev, charges: updatedCharges });
+      setSelectedRow((prev) =>
+        prev
+          ? {
+              ...prev,
+              charges: updatedCharges, // 충전 데이터 업데이트
+            }
+          : null
+      );
+
       // 전체 depositData 상태 업데이트
       setDepositData((prevData) =>
         prevData.map((deposit) =>
           deposit.uuid === selectedRow?.uuid
-            ? { ...deposit, charges: updatedCharges }
+            ? { ...deposit, charges: updatedCharges } // 충전 데이터 업데이트
             : deposit
         )
       );
-      // 새로운 행 초기화
+
+      // 충전 테이블에 새로운 데이터가 바로 보이도록 상태 초기화 및 UI 갱신
       setNewCharge({
         uuid: `temp-${Date.now()}`,
         createdAt: new Date(),
@@ -326,12 +360,17 @@ const Deposit: React.FC = () => {
         netSales: 0,
         note: "",
       });
+
       alert("충전이 등록되었습니다.");
     } catch (error: any) {
       console.error("Failed to Charge:", error);
-      alert(error.response.data.result.message);
+      alert(
+        error.response?.data?.result?.message ||
+          "충전 데이터를 등록하는 데 실패했습니다."
+      );
     }
   };
+
 
   // 삭제 버튼 클릭 -> 모달 표시
   const handleDeleteClick = () => {
@@ -481,16 +520,39 @@ const Deposit: React.FC = () => {
     }
   };
 
+  const handleYearChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedYear(parseInt(e.target.value, 10));
+  };
+
+  const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedMonth(parseInt(e.target.value, 10));
+  };
   return (
     <div>
-      {/* 필터 부분 */}
+      {/* 필터 */}
       <div className="mb-4">
         <label className="mr-2">기간</label>
-        <select className="mr-2">
-          <option>2024년</option>
+        <select
+          value={selectedYear}
+          onChange={handleYearChange}
+          className="mr-2"
+        >
+          {years.map((year) => (
+            <option key={year} value={year}>
+              {year}년
+            </option>
+          ))}
         </select>
-        <select className="mr-2">
-          <option>12월</option>
+        <select
+          value={selectedMonth}
+          onChange={handleMonthChange}
+          className="mr-2"
+        >
+          {months.map((month) => (
+            <option key={month} value={month}>
+              {month}월
+            </option>
+          ))}
         </select>
         {(userRole == "system" || userRole == "admin") && (
           <>
@@ -500,9 +562,12 @@ const Deposit: React.FC = () => {
               value={selectedMarketer}
               onChange={handleMarketerChange}
             >
-              <option value="">전체</option>
-              {marketerList.map((marketer: any) => (
-                <option key={marketer.uuid} value={marketer.uuid}>
+              {marketerList.map((marketer: any, index) => (
+                <option
+                  key={marketer.uid}
+                  value={marketer.uid}
+                  selected={index === 0}
+                >
                   {marketer.name}
                 </option>
               ))}
@@ -961,10 +1026,7 @@ const Deposit: React.FC = () => {
 
       {/* 리스트 테이블 */}
       <div className="ml-3 d-flex justify-content-between">
-        <h5>
-          리스트 (데이터 : {Array.isArray(depositData) ? depositData.length : 0}
-          개)
-        </h5>
+        <h5> 리스트 </h5>
         <div className="align-items-center d-flex">
           <button className="btn btn-danger mr-2" onClick={handleDeleteClick}>
             삭제
@@ -1007,7 +1069,7 @@ const Deposit: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {Array.isArray(depositData) &&
+            {Array.isArray(depositData) ? (
               depositData.map((row) => (
                 <tr
                   key={row.uuid}
@@ -1018,6 +1080,7 @@ const Deposit: React.FC = () => {
                     cursor: "pointer",
                     whiteSpace: "nowrap",
                     textAlign: "center",
+                    // backgroundColor: row.uuid === highlightrow ? "blue" : "",
                   }}
                 >
                   <td>
@@ -1099,7 +1162,14 @@ const Deposit: React.FC = () => {
                   })()}
                   {/* 비고 자리 */}
                 </tr>
-              ))}
+              ))
+            ) : (
+              <tr>
+                <td colSpan={19} className="text-center text-danger">
+                  데이터가 없습니다.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
