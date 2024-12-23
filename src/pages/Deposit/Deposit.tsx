@@ -34,8 +34,6 @@ const currentMonth = dayjs().month() + 1;
 const Deposit: React.FC = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
-  const { isLoggedIn } = useAuth();
-  const navigate = useNavigate();
   const [depositData, setDepositData] = useState<IDeposit[]>([]);
   const [selectedRow, setSelectedRow] = useState<IDeposit | null>(null);
   const [newDeposit, setNewDeposit] = useState<Partial<IDeposit>>({
@@ -77,7 +75,7 @@ const Deposit: React.FC = () => {
   const [marketerList, setMarketerList] = useState<
     { uid: string; name: string }[]
   >([]); // departmentUuid가 3인 데이터 목록
-  const [selectedMarketer, setSelectedMarketer] = useState<string>(""); // 선택된 마케터 UUID
+  const [selectedMarketer, setSelectedMarketer] = useState<string>(""); // 선택된 마케터 UID
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   const [selectedMonth, setSelectedMonth] = useState<number>(currentMonth);
   // const [highlightrow, setHighlightrow] = useState<string | null>(null);
@@ -371,7 +369,6 @@ const Deposit: React.FC = () => {
     }
   };
 
-
   // 삭제 버튼 클릭 -> 모달 표시
   const handleDeleteClick = () => {
     if (!selectedRow) {
@@ -489,8 +486,9 @@ const Deposit: React.FC = () => {
     }
     if (window.confirm("수정한 충전 정보를 저장하시겠습니까?")) {
       try {
+        // 기존 값 비교
         const response = await axios.put(
-          `/sheet/deposit/${selectedRow?.uuid}/charge/${selectedCharge.uuid}}`,
+          `/sheet/deposit/${selectedRow?.uuid}/charge/${selectedCharge.uuid}`,
           selectedCharge,
           { withCredentials: true }
         );
@@ -509,6 +507,7 @@ const Deposit: React.FC = () => {
           );
           setSelectedCharge(null); //수정 완료 후 초기화
           alert("충전 정보가 수정되었습니다.");
+          // 리로드
         }
       } catch (error: any) {
         console.error("충전 정보 수정 실패:", error);
@@ -577,7 +576,7 @@ const Deposit: React.FC = () => {
       </div>
 
       {/* 입금 테이블 */}
-      <div className="ml-3 d-flex justify-content-between align-items-center">
+      <div className="mb-3 d-flex justify-content-between align-items-center">
         <h5>입금</h5>
         <div>
           {selectedRow ? (
@@ -597,14 +596,14 @@ const Deposit: React.FC = () => {
             </button>
           )}
           <button
-            className="btn btn-secondary mr-4"
+            className="btn btn-secondary"
             onClick={handleDepositCancelClick}
           >
             취소
           </button>
         </div>
       </div>
-      <div className="card-body table-full-width table-responsive">
+      <div className="table-full-width px-0 table-responsive">
         <table className="table">
           <thead>
             <tr className="text-nowrap text-center">
@@ -847,7 +846,7 @@ const Deposit: React.FC = () => {
       </div>
 
       {/* 충전 테이블 */}
-      <div className="ml-3 d-flex justify-content-between">
+      <div className="d-flex justify-content-between my-3">
         <h5>
           충전 (사용가능금액:{" "}
           {selectedRow?.rechargeableAmount?.toLocaleString("") || 0} 원)
@@ -875,7 +874,7 @@ const Deposit: React.FC = () => {
             등록
           </button>
           <button
-            className="btn btn-secondary mr-4"
+            className="btn btn-secondary"
             disabled={!selectedRow} // selectedRow가 없으면 비활성화
             onClick={handleChargeCancelClick}
           >
@@ -883,7 +882,7 @@ const Deposit: React.FC = () => {
           </button>
         </div>
       </div>
-      <div className="card-body table-full-width table-responsive border-bottom mb-4">
+      <div className="table-full-width px-0 table-responsive border-bottom pb-3">
         <table className="table">
           <thead>
             <tr className="text-nowrap text-center">
@@ -1025,13 +1024,13 @@ const Deposit: React.FC = () => {
       </div>
 
       {/* 리스트 테이블 */}
-      <div className="ml-3 d-flex justify-content-between">
+      <div className="d-flex justify-content-between my-4">
         <h5> 리스트 </h5>
         <div className="align-items-center d-flex">
           <button className="btn btn-danger mr-2" onClick={handleDeleteClick}>
             삭제
           </button>
-          <select className="mr-4 h-100" name="" id="">
+          <select className="h-100" name="" id="">
             전체
             <option value="total">전체</option>
             <option value="finished">완료</option>
@@ -1039,8 +1038,8 @@ const Deposit: React.FC = () => {
           </select>
         </div>
       </div>
-      <div className="card-body table-full-width table-responsive">
-        <table className="table table-hover">
+      <div className="table-full-width px-0 table-responsive">
+        <table className="table table-hover table-bordered">
           <thead>
             <tr className="text-nowrap text-center">
               <th>선택</th>
