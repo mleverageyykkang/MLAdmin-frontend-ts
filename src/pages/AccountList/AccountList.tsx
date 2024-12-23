@@ -37,8 +37,6 @@ const AccountList: React.FC = () => {
         setUserRole(user.role);
       } catch (err) {
         console.error("Error fetching user role:", err);
-        alert("권한이 없습니다.");
-        navigate("/");
       }
     };
     fetchUserRole();
@@ -172,6 +170,7 @@ const AccountList: React.FC = () => {
   type MediaAccountField =
     | "id"
     | "pwd"
+    | "naverNumber"
     | "gfaNumber"
     | "kakaoNumber"
     | "momentNumber";
@@ -435,7 +434,7 @@ const AccountList: React.FC = () => {
               <th colSpan={8}>관리 정보</th>
               <th colSpan={2}>이탈시</th>
               <th colSpan={1}>홈페이지</th>
-              <th colSpan={2} style={{ backgroundColor: "#6aa84f" }}>
+              <th colSpan={3} style={{ backgroundColor: "#6aa84f" }}>
                 네이버
               </th>
               <th colSpan={3} style={{ backgroundColor: "#38761d" }}>
@@ -480,6 +479,7 @@ const AccountList: React.FC = () => {
               <th rowSpan={2}></th>
               <td rowSpan={2}>아이디</td>
               <td rowSpan={2}>비밀번호</td>
+              <td rowSpan={2}>광고계정번호</td>
               <td rowSpan={2}>아이디</td>
               <td rowSpan={2}>비밀번호</td>
               <td rowSpan={2}>광고계정번호</td>
@@ -494,6 +494,7 @@ const AccountList: React.FC = () => {
               <td rowSpan={2}>아이디</td>
               <td rowSpan={2}>비밀번호</td>
               <td rowSpan={2}>멘토 유무</td>
+              <td rowSpan={2}>멘토</td>
             </tr>
             <tr className="text-nowrap text-center">
               <td>네이버</td>
@@ -742,6 +743,22 @@ const AccountList: React.FC = () => {
                       <td>
                         <input
                           type="text"
+                          value={
+                            editedRow.mediaAccount?.naver?.naverNumber || ""
+                          }
+                          onChange={(e) =>
+                            handleNestedFieldChange(
+                              e,
+                              "mediaAccount",
+                              "naver",
+                              "naverNumber"
+                            )
+                          }
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="text"
                           value={editedRow.mediaAccount?.gfa?.id || ""}
                           onChange={(e) =>
                             handleNestedFieldChange(
@@ -932,6 +949,13 @@ const AccountList: React.FC = () => {
                           onChange={(e) => handleChange(e, "isAssisted")}
                         />
                       </td>
+                      <td>
+                        <input
+                          type="text"
+                          value={editedRow.mentor || ""}
+                          onChange={(e) => handleChange(e, "mentor")}
+                        />
+                      </td>
                     </>
                   ) : (
                     <>
@@ -949,7 +973,11 @@ const AccountList: React.FC = () => {
                       <td>{row.marketerEmail}</td>
                       <td>{row.spending}</td>
                       <td>{row.point}</td>
-                      <td>{row.transferDate ? dayjs(row.transferDate).format("YYYY-MM-DD") : ""}</td>
+                      <td>
+                        {row.transferDate
+                          ? dayjs(row.transferDate).format("YYYY-MM-DD")
+                          : ""}
+                      </td>
                       <td>{row.taxInvoiceInfo}</td>
                       <td>{row.payback?.naver}</td>
                       <td>{row.payback?.kakao}</td>
@@ -957,11 +985,16 @@ const AccountList: React.FC = () => {
                       <td>{row.payback?.carot}</td>
                       <td>{row.payback?.etc}</td>
                       <td>{row.note}</td>
-                      <td>{row.leaveDate ? dayjs(row.leaveDate).format("YYYY-MM-DD"):""}</td>
+                      <td>
+                        {row.leaveDate
+                          ? dayjs(row.leaveDate).format("YYYY-MM-DD")
+                          : ""}
+                      </td>
                       <td>{row.leaveReason}</td>
                       <td></td> {/* 홈페이지 자리 */}
                       <td>{row.mediaAccount?.naver?.id}</td>
                       <td>{row.mediaAccount?.naver?.pwd}</td>
+                      <td>{row.mediaAccount?.naver?.naverNumber}</td>
                       <td>{row.mediaAccount?.gfa?.id}</td>
                       <td>{row.mediaAccount?.gfa?.pwd}</td>
                       <td>{row.mediaAccount?.gfa?.gfaNumber}</td>
@@ -982,6 +1015,7 @@ const AccountList: React.FC = () => {
                           checked={row.isAssisted}
                         />
                       </td>
+                      <td>{row.mentor}</td>
                     </>
                   )}
                 </tr>
