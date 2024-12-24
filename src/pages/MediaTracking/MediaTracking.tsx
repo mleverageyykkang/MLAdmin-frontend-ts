@@ -1,7 +1,19 @@
-import React from "react";
+import React, { useEffect } from "react";
 import "./MediaTracking.module.scss";
+import axios from "axios";
 
 const MediaTracking: React.FC = () => {
+  useEffect(() => {
+    const getMedias = async () => {
+      try {
+        const response = await axios.get("/tracking");
+        console.log(response.data.body);
+      } catch (error) {
+        console.error("Failed to fetch Data:", error);
+      }
+    };
+    getMedias();
+  });
   return (
     <div className="container-fluid p-3">
       {/* 필터 */}

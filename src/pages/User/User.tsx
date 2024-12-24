@@ -328,7 +328,7 @@ const User: React.FC = () => {
                 style={{
                   backgroundColor:
                     editingRow === row.uid || selectedRow === row.uid
-                      ? "#f8f9fa"
+                      ? "#f0f8ff"
                       : "transparent",
                 }}
                 className="text-nowrap"
@@ -339,7 +339,7 @@ const User: React.FC = () => {
                     checked={selectedRow === row.uid}
                     disabled={buttonState === "register"} // 추가 상태에서는 체크박스 비활성화
                     onChange={() => {
-                      if (selectedRow === row.uuid) {
+                      if (selectedRow === row.uid) {
                         // 이미 선택된 상태 => 수정모드 off
                         setSelectedRow(null);
                         setEditingRow(null);

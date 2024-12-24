@@ -19,6 +19,11 @@ const AccountList: React.FC = () => {
   const [accountData, setAccountData] = useState<IAccount[]>([]);
   const navigate = useNavigate();
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [marketerList, setMarketerList] = useState<
+    { uid: string; name: string }[]
+  >([]);
+  const [selectedMarketer, setSelectedMarketer] = useState<string>("");
   const { isLoggedIn } = useAuth();
   const [buttonState, setButtonState] = useState<"default" | "register">(
     "default"
@@ -27,35 +32,58 @@ const AccountList: React.FC = () => {
   const [editedRow, setEditedRow] = useState<Partial<IAccount>>({}); // 행 수정 사항
   const [selectedRow, setSelectedRow] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchUserRole = async () => {
-      try {
-        const response = await axios.get("/sheet/account", {
-          withCredentials: true,
-        });
-        const user: User = response.data.context.user;
-        setUserRole(user.role);
-      } catch (err) {
-        console.error("Error fetching user role:", err);
+  const fetchUser = async () => {
+    try {
+      const response = await axios.get("/user", {
+        withCredentials: true,
+      });
+      const user: User = response.data.context.user;
+      setUserRole(user.role);
+      setUserId(user.uid);
+      if (user.role === "admin" || user.role === "system") {
+        const marketerResponse = response.data.body;
+        const marketers = marketerResponse
+          .filter((marketer: any) => marketer.departmentUuid === "3")
+          .sort((a: any, b: any) => a.positionUuid - b.positionUuid)
+          .map((marketer: any) => ({ uid: marketer.uid, name: marketer.name }));
+        setMarketerList(marketers);
+        if (marketerList.length >= 0 && !selectedMarketer) {
+          setSelectedMarketer(marketers[0].uid);
+        }
       }
-    };
-    fetchUserRole();
-  }, [isLoggedIn]);
+    } catch (err) {
+      console.error("로그인한 유저 정보 로드 실패:", err);
+    }
+  };
 
+  const getAccounts = async () => {
+    try {
+      const response = await axios.get("/sheet/account");
+      setAccountData(response.data.body);
+      //203 에러 : 등록된 광고주 계정이 없습니다.
+      if (response.status === 203) console.error(response.data.result.message);
+    } catch (error) {
+      console.error("Failed to fetch data:", error);
+    }
+  };
+  // getAccounts();
+
+  //초기 데이터 로드
   useEffect(() => {
-    const getAccounts = async () => {
-      try {
-        const response = await axios.get("/sheet/account");
-        setAccountData(response.data.body);
-        //203 에러 : 등록된 광고주 계정이 없습니다.
-        if (response.data.result.code == 203)
-          console.error(response.data.result.message);
-      } catch (error) {
-        console.error("Failed to fetch data:", error);
+    const initializeData = async () => {
+      await fetchUser();
+      if (userRole && userId) {
+        if (userRole === "user") {
+          getAccounts();
+        } else if (userRole === "admin" || userRole === "system") {
+          // if (selectedMarketer) {
+          getAccounts(); //selectedMarketer (부장님) 을 먼저 가져오기
+          // }
+        }
       }
     };
-    getAccounts();
-  }, []);
+    initializeData();
+  }, [isLoggedIn, selectedMarketer, userRole, userId]);
 
   if (userRole === null) {
     return <div>Loading...</div>; // 사용자 역할 로딩 중
@@ -360,16 +388,35 @@ const AccountList: React.FC = () => {
     }
   };
 
+  // 마케터 필터 변경 처리
+  const handleMarketerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const marketerUid = e.target.value;
+    setSelectedMarketer(marketerUid);
+    getAccounts(); // 적용된 데이터 가져오기(marketerUid로 )
+  };
+
   return (
     <div className="container-fluid">
       <div className="mb-2 d-flex justify-content-between">
+        {/* 필터 */}
         <div>
           {(userRole == "system" || userRole == "admin") && (
             <>
               <label className="mr-2">이름:</label>
-              <select className="mr-2">
-                <option>마케터1</option>
-                <option>마케터2</option>
+              <select
+                className="mr-2"
+                value={selectedMarketer}
+                onChange={handleMarketerChange}
+              >
+                {marketerList.map((marketer: any, index) => (
+                  <option
+                    key={marketer.uid}
+                    value={marketer.uid}
+                    selected={index === 0}
+                  >
+                    {marketer.name}
+                  </option>
+                ))}
               </select>
             </>
           )}
@@ -429,7 +476,8 @@ const AccountList: React.FC = () => {
         <table className="table table-bordered">
           <thead>
             <tr className="text-nowrap text-center">
-              <th colSpan={13}>광고주 정보</th>
+              <th colSpan={1}></th>
+              <th colSpan={12}>광고주 정보</th>
               <th colSpan={2}>중요도</th>
               <th colSpan={8}>관리 정보</th>
               <th colSpan={2}>이탈시</th>
@@ -1015,7 +1063,11 @@ const AccountList: React.FC = () => {
                           checked={row.isAssisted}
                         />
                       </td>
-                      <td>{row.mentor}</td>
+                      <td>
+                        {marketerList.find(
+                          (user: any) => user.uid === row.mentor
+                        )?.name || ""}
+                      </td>
                     </>
                   )}
                 </tr>

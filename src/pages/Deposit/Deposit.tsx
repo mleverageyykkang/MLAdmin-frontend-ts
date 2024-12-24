@@ -8,6 +8,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "providers/authProvider";
 import ICharge from "../../common/models/charge/ICharge";
+import "./Deposit.module.scss";
 
 interface User {
   uid: string;
@@ -227,8 +228,6 @@ const Deposit: React.FC = () => {
         }
       }
       console.log("등록 후 data:", depositData);
-      // setHighlightrow(depositData[depositData.length -1].uuid);
-      // console.log("highlightrow:", highlightrow);
       setNewDeposit({
         uuid: `temp-${Date.now()}`,
         progressDate: new Date(),
@@ -309,25 +308,32 @@ const Deposit: React.FC = () => {
   };
 
   const handleRegisterCharge = async () => {
-    const { uuid, ...requestData } = newCharge;
-
+    const { uuid, ...requestData } = newCharge; // uuid를 제외하고 전송
     try {
       const response = await axios.post(
         `/sheet/deposit/${selectedRow?.uuid}/charge`,
         requestData,
         { withCredentials: true }
       );
+
       console.log("충전 성공:", response.data);
 
-      // 새로운 충전 데이터를 추가한 충전 배열 생성
-      const updatedCharges = [...(selectedRow?.charges || []), response.data];
+      // 서버에서 최신 충전 데이터를 가져옴
+      const chargesResponse = await axios.get(
+        `/sheet/deposit/${selectedRow?.uuid}/charge`,
+        { withCredentials: true }
+      );
+      const updatedCharges = chargesResponse.data.body.charges; // 최신 충전 데이터
+      const updatedRechargeableAmount =
+        chargesResponse.data.body.rechargeableAmount;
 
       // 선택된 행 업데이트
       setSelectedRow((prev) =>
         prev
           ? {
               ...prev,
-              charges: updatedCharges, // 충전 데이터 업데이트
+              charges: updatedCharges, // 충전 데이터 동기화
+              rechargeableAmount: updatedRechargeableAmount,
             }
           : null
       );
@@ -336,10 +342,20 @@ const Deposit: React.FC = () => {
       setDepositData((prevData) =>
         prevData.map((deposit) =>
           deposit.uuid === selectedRow?.uuid
-            ? { ...deposit, charges: updatedCharges } // 충전 데이터 업데이트
+            ? { ...deposit, charges: updatedCharges } // 충전 데이터 동기화
             : deposit
         )
       );
+      if (userRole && userId) {
+        // userRole에 따라 적절한 데이터를 가져옴
+        if (userRole === "user") {
+          getDeposits(userId); // userId로 데이터를 가져옴
+        } else if (userRole === "admin" || userRole === "system") {
+          if (selectedMarketer) {
+            getDeposits(selectedMarketer); // selectedMarketer로 데이터를 가져옴
+          }
+        }
+      }
 
       // 충전 테이블에 새로운 데이터가 바로 보이도록 상태 초기화 및 UI 갱신
       setNewCharge({
@@ -418,21 +434,44 @@ const Deposit: React.FC = () => {
           `/sheet/deposit/${selectedRow?.uuid}/charge/${selectedCharge?.uuid}`,
           { withCredentials: true }
         );
-        // UI 갱신
-        const updatedCharges = selectedRow?.charges?.filter(
-          (charge) => charge.uuid !== selectedCharge?.uuid
+        // 서버에서 최신 충전 데이터를 가져옴
+        const chargesResponse = await axios.get(
+          `/sheet/deposit/${selectedRow?.uuid}/charge`,
+          { withCredentials: true }
         );
-        // 상태 업데이트
+        const updatedCharges = chargesResponse.data.body.charges; // 최신 충전 데이터
+        const updatedRechargeableAmount =
+          chargesResponse.data.body.rechargeableAmount;
+
+        // 선택된 행 업데이트
         setSelectedRow((prev) =>
-          prev ? { ...prev, charges: updatedCharges } : null
+          prev
+            ? {
+                ...prev,
+                charges: updatedCharges, // 충전 데이터 동기화
+                rechargeableAmount: updatedRechargeableAmount,
+              }
+            : null
         );
+        // 전체 depositData 상태 업데이트
         setDepositData((prevData) =>
           prevData.map((deposit) =>
             deposit.uuid === selectedRow?.uuid
-              ? { ...deposit, charges: updatedCharges }
+              ? { ...deposit, charges: updatedCharges } // 충전 데이터 동기화
               : deposit
           )
         );
+        // 전체 입금 데이터 서버에서 동기화
+        if (userRole && userId) {
+          // userRole에 따라 적절한 데이터를 가져옴
+          if (userRole === "user") {
+            getDeposits(userId); // userId로 데이터를 가져옴
+          } else if (userRole === "admin" || userRole === "system") {
+            if (selectedMarketer) {
+              getDeposits(selectedMarketer); // selectedMarketer로 데이터를 가져옴
+            }
+          }
+        }
         setSelectedCharge(null); // 상태 초기화
         alert("선택한 충전 데이터가 삭제되었습니다.");
       } catch (error) {
@@ -467,8 +506,16 @@ const Deposit: React.FC = () => {
             )
           );
           // 서버에서 최신 데이터를 가져와 동기화
-          const refreshedData = await axios.get("/sheet/deposit");
-          setDepositData(refreshedData.data.body);
+          if (userRole && userId) {
+            // userRole에 따라 적절한 데이터를 가져옴
+            if (userRole === "user") {
+              getDeposits(userId); // userId로 데이터를 가져옴
+            } else if (userRole === "admin" || userRole === "system") {
+              if (selectedMarketer) {
+                getDeposits(selectedMarketer); // selectedMarketer로 데이터를 가져옴
+              }
+            }
+          }
           setSelectedRow(null);
         }
       } catch (error) {
@@ -486,33 +533,87 @@ const Deposit: React.FC = () => {
     }
     if (window.confirm("수정한 충전 정보를 저장하시겠습니까?")) {
       try {
-        // 기존 값 비교
+        // 기존 값 찾기
+        const originalCharge = selectedRow?.charges?.find(
+          (charge) => charge.uuid === selectedCharge.uuid
+        );
+
+        if (!originalCharge) {
+          alert("기존 데이터를 찾을 수 없습니다.");
+          return;
+        }
+
+        // 변경된 값만 추출
+        const updatedFields = Object.entries(selectedCharge).reduce(
+          (acc: any, [key, value]) => {
+            if (value !== originalCharge[key as keyof ICharge]) {
+              acc[key] = value;
+            }
+            return acc;
+          },
+          {} as Partial<typeof selectedCharge>
+        );
+
+        // 변경된 값이 없으면 종료
+        if (Object.keys(updatedFields).length === 0) {
+          alert("수정된 내용이 없습니다.");
+          return;
+        }
+
+        // API 요청
         const response = await axios.put(
           `/sheet/deposit/${selectedRow?.uuid}/charge/${selectedCharge.uuid}`,
-          selectedCharge,
+          updatedFields, // 변경된 값만 보냄
           { withCredentials: true }
         );
+
         // 서버 응답 데이터로 업데이트
-        const updatedCharge = response.data;
         if (response.status === 200) {
+          // 서버에서 최신 충전 데이터를 가져옴
+          const chargesResponse = await axios.get(
+            `/sheet/deposit/${selectedRow?.uuid}/charge`,
+            { withCredentials: true }
+          );
+          const updatedCharges = chargesResponse.data.body.charges; // 최신 충전 데이터
+          const updatedRechargeableAmount =
+            chargesResponse.data.body.rechargeableAmount;
+
+          // 선택된 행 업데이트
           setSelectedRow((prev) =>
             prev
               ? {
                   ...prev,
-                  charges: prev.charges?.map((charge) =>
-                    charge.uuid === updatedCharge.uuid ? updatedCharge : charge
-                  ),
+                  charges: updatedCharges, // 충전 데이터 동기화
+                  rechargeableAmount: updatedRechargeableAmount,
                 }
               : null
           );
-          setSelectedCharge(null); //수정 완료 후 초기화
+
+          // 전체 depositData 상태 업데이트
+          setDepositData((prevData) =>
+            prevData.map((deposit) =>
+              deposit.uuid === selectedRow?.uuid
+                ? { ...deposit, charges: updatedCharges } // 충전 데이터 동기화
+                : deposit
+            )
+          );
+          if (userRole && userId) {
+            // userRole에 따라 적절한 데이터를 가져옴
+            if (userRole === "user") {
+              getDeposits(userId); // userId로 데이터를 가져옴
+            } else if (userRole === "admin" || userRole === "system") {
+              if (selectedMarketer) {
+                getDeposits(selectedMarketer); // selectedMarketer로 데이터를 가져옴
+              }
+            }
+          }
+          setSelectedCharge(null); // 수정 완료 후 초기화
           alert("충전 정보가 수정되었습니다.");
-          // 리로드
         }
       } catch (error: any) {
         console.error("충전 정보 수정 실패:", error);
         alert(
-          error.response.data.result.message ||
+          error.response?.data?.result?.message ||
             "충전 정보를 수정하는데 실패했습니다."
         );
       }
@@ -736,7 +837,7 @@ const Deposit: React.FC = () => {
               </tr>
             ) : (
               // 새 행 추가 모드
-              <tr style={{ backgroundColor: "#f0f8ff" }}>
+              <tr>
                 {[
                   { field: "progressDate", value: newDeposit.progressDate },
                   { field: "company", value: newDeposit.company },
@@ -904,7 +1005,7 @@ const Deposit: React.FC = () => {
           </thead>
           <tbody>
             {/* 충전테이블 새 행 추가 모드 */}
-            <tr style={{ backgroundColor: "#f0f8ff" }}>
+            <tr>
               <td className="text-center">
                 <input
                   type="checkbox"
@@ -962,7 +1063,15 @@ const Deposit: React.FC = () => {
             </tr>
             {/* 충전테이블 기존 행 수정 모드 */}
             {selectedRow?.charges?.map((charge, chargeIndex) => (
-              <tr key={charge.uuid || chargeIndex}>
+              <tr
+                key={charge.uuid || chargeIndex}
+                style={{
+                  backgroundColor:
+                    selectedCharge?.uuid === charge?.uuid
+                      ? "#f8f9fa"
+                      : "transparent",
+                }}
+              >
                 <td className="text-center">
                   <input
                     type="checkbox"
