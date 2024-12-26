@@ -20,7 +20,7 @@ function Sidebar({ routes }: { routes: any[] }) {
         {routes.map((route, index) => {
           if (route.items && route.items.length > 0) {
             const isActive = route.items.some(
-              (item: any) => `${item.layout}${item.path}` === location.pathname
+              (item: any) => `${item?.layout}${item.path}` === location.pathname
             );
 
             return (
@@ -49,10 +49,7 @@ function Sidebar({ routes }: { routes: any[] }) {
 
           return (
             <div key={index} className="sidebar-item">
-              <NavLink
-                to={`${route.layout}${route.path}`}
-                className="sidebar-link"
-              >
+              <NavLink to={`${route.path}`} className="sidebar-link">
                 {route.name}
               </NavLink>
             </div>

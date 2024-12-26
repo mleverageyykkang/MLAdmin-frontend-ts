@@ -270,10 +270,14 @@ const Deposit: React.FC = () => {
   const handleChargeCancelClick = () => {
     if (selectedCharge && selectedRow) {
       // selectedRow에서 선택된 충전 데이터 찾기
-      const originalCharge = selectedRow.charges?.find(
+      const original = depositData.find(
+        (deposit) => deposit.uuid === selectedRow.uuid
+      );
+      const originalCharge: any = original?.charges?.find(
         (charge) => charge.uuid === selectedCharge.uuid
       );
-      if (originalCharge) {
+
+      if (JSON.stringify(originalCharge) !== JSON.stringify(selectedCharge)) {
         setSelectedRow((prev) =>
           prev
             ? {

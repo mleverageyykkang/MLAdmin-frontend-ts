@@ -155,7 +155,7 @@ const AccountList: React.FC = () => {
       leaveDate: undefined,
       leaveReason: "",
       mediaAccount: {
-        naver: { id: "", pwd: "" },
+        naver: { id: "", pwd: "", naverNumber: 0 },
         gfa: { id: "", pwd: "", gfaNumber: 0 },
         kakao: { id: "", pwd: "", kakaoNumber: 0, momentNumber: 0 },
         google: { id: "", pwd: "" },

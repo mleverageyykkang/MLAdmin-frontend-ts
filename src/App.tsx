@@ -15,19 +15,21 @@ import Deposit from "./pages/Deposit/Deposit";
 import MediaTracking from "pages/MediaTracking/MediaTracking";
 import Adjustment from "pages/Adjustment/Adjustment";
 import TotalTracking from "pages/TotalTracking/TotalTracking";
+import path from "path";
+import OtherWork from "pages/OtherWork/OtherWork";
 
 const dashboardRoutes = [
   {
     path: "/dashboard",
     name: "메인",
-    icon: "nc-icon nc-chart-pie-35",
-    layout: "",
   },
   {
     path: "/user",
     name: "사용자 관리",
-    icon: "nc-icon nc-circle-09",
-    layout: "",
+  },
+  {
+    path: "/otherwork",
+    name: "업무관리",
   },
   {
     path: "/sheet",
@@ -88,6 +90,7 @@ function App() {
             <Route path="/" element={<LoginPage />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/user" element={<User />} />
+            <Route path="/otherwork" element={<OtherWork />} />
             {/* <Route path="/sheet/1" element={<Commission />} /> */}
             <Route path="/sheet/1" element={<AccountList />} />
             <Route path="/sheet/2" element={<Deposit />} />
