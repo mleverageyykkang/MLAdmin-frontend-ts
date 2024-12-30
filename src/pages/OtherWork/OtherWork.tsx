@@ -26,7 +26,7 @@ const OtherWork: React.FC = () => {
     const getWorks = async () => {
       try {
         const response = await axios.get(
-          `/otherWork/?year=${selectedMonth}&month=${selectedMonth}&uid=uid`
+          `/otherWork/?year=${selectedYear}&month=${selectedMonth}`
         );
         console.log(response.data.body);
         setOtherWorkData(response.data.body);
@@ -82,27 +82,6 @@ const OtherWork: React.FC = () => {
         </select>
       </div>
 
-      {/* 등록 테이블 */}
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h5>등록</h5>
-        <div>
-          <button className="btn btn-success mr-2">등록</button>
-          <button className="btn btn-secondary">취소</button>
-        </div>
-      </div>
-      <div className="table-full-width px-0 table-responsive">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>업무종류</th>
-              <th>진행일자</th>
-              <th>장소</th>
-              <th>내용</th>
-            </tr>
-          </thead>
-        </table>
-      </div>
-
       {/* 리스트 */}
       <div>
         <div className="table-full-width px-0 table-responsive">
@@ -123,7 +102,7 @@ const OtherWork: React.FC = () => {
               <th>내용</th>
             </thead>
             <tbody>
-              {otherWorkData &&
+              {Array.isArray(otherWorkData) &&
                 otherWorkData.map((row) => (
                   <tr className="text-nowrap text-center">
                     <td>

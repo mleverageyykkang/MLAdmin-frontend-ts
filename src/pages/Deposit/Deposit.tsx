@@ -24,7 +24,8 @@ const processTypeLabels: Record<string, string> = {
   default: "기본",
   precharge: "선충전",
   deduct: "차감",
-  remitPay: "송금/결제",
+  remitPayCo: "송금/결제(회사)",
+  remitPayDe: "송금/결제(차감)",
 };
 
 const years = Array.from({ length: 6 }, (_, i) => dayjs().year() + i); // 연도 범위 생성 (현재 연도 +/- 5)
@@ -780,7 +781,8 @@ const Deposit: React.FC = () => {
                         <option value={processType.DEFAULT}>기본</option>
                         <option value={processType.PRECHARGE}>선충전</option>
                         <option value={processType.DEDUCT}>차감</option>
-                        <option value={processType.REMITPAY}>송금/결제</option>
+                        <option value={processType.REMITPAYCO}>송금/결제(회사)</option>
+                        <option value={processType.REMITPAYDE}>송금/결제(차감)</option>
                       </select>
                     ) : field === "deductAmount" ? (
                       <input
@@ -891,7 +893,12 @@ const Deposit: React.FC = () => {
                         <option value={processType.DEFAULT}>기본</option>
                         <option value={processType.PRECHARGE}>선충전</option>
                         <option value={processType.DEDUCT}>차감</option>
-                        <option value={processType.REMITPAY}>송금/결제</option>
+                        <option value={processType.REMITPAYCO}>
+                          송금/결제(회사)
+                        </option>
+                        <option value={processType.REMITPAYDE}>
+                          송금/결제(차감)
+                        </option>
                       </select>
                     ) : field === "deductAmount" ? (
                       <input
@@ -1056,7 +1063,8 @@ const Deposit: React.FC = () => {
                       disabled={
                         !selectedRow || // selectedRow가 없으면 비활성화
                         (isRemitPayField &&
-                          selectedRow?.processType !== processType.REMITPAY) // remitPay 조건 처리
+                          selectedRow?.processType !== processType.REMITPAYCO &&
+                          selectedRow?.processType !== processType.REMITPAYDE) // remitPay 조건 처리
                       }
                       onChange={(e) =>
                         setNewCharge((prev) => ({
@@ -1121,7 +1129,9 @@ const Deposit: React.FC = () => {
                         disabled={
                           selectedCharge?.uuid !== charge.uuid || // selectedRow가 없으면 비활성화
                           (isRemitPayField &&
-                            selectedRow?.processType !== processType.REMITPAY) // remitPay 조건 처리
+                            selectedRow?.processType !==
+                              processType.REMITPAYCO) ||
+                          selectedRow?.processType !== processType.REMITPAYDE // remitPay 조건 처리
                         }
                         onChange={(e) =>
                           handleInputChange(
