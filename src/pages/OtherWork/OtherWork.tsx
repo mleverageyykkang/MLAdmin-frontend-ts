@@ -3,29 +3,6 @@ import IOtherWork, { workType } from "../../common/models/otherWork/IOtherWork";
 import dayjs from "dayjs";
 import { useEffect, useState } from "react";
 
-const dummy: IOtherWork[] = [
-  {
-    uuid: "aae7f1fe-6664-45bd-92aa-a43ae3917e10",
-    workType: "content" as workType,
-    workDate: new Date("2024-12-24T00:00:00.000Z"),
-    location: "회사",
-    content: "정기 컨텐츠 제작",
-    uid: "system",
-    createdAt: new Date("2024-12-23T01:25:23.000Z"),
-    updatedAt: new Date("2024-12-23T01:25:23.000Z"),
-  },
-  {
-    uuid: "fa4165af-72ae-4ffa-ac90-22e976bb8018",
-    workType: "outside" as workType,
-    workDate: new Date("2024-12-24T00:00:00.000Z"),
-    location: "압구정",
-    content: "정기미팅",
-    uid: "system",
-    createdAt: new Date("2024-12-23T01:25:00.000Z"),
-    updatedAt: new Date("2024-12-23T01:25:00.000Z"),
-  },
-];
-
 const workTypeLabels: Record<string, string> = {
   outside: "외근",
   content: "컨텐츠 제작",
@@ -40,7 +17,7 @@ const currentYear = dayjs().year();
 const currentMonth = dayjs().month() + 1;
 
 const OtherWork: React.FC = () => {
-  const [otherWorkData, setOtherWorkData] = useState<IOtherWork[]>(dummy);
+  const [otherWorkData, setOtherWorkData] = useState<IOtherWork[]>([]);
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   const [selectedMonth, setSelectedMonth] = useState<number>(currentMonth);
   const [selectedWork, setSelectedWork] = useState<IOtherWork | null>(null);

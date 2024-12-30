@@ -79,7 +79,6 @@ const Deposit: React.FC = () => {
   const [selectedMarketer, setSelectedMarketer] = useState<string>(""); // 선택된 마케터 UID
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   const [selectedMonth, setSelectedMonth] = useState<number>(currentMonth);
-  // const [highlightrow, setHighlightrow] = useState<string | null>(null);
 
   //role 확인
   const fetchUserRole = async () => {
@@ -538,7 +537,10 @@ const Deposit: React.FC = () => {
     if (window.confirm("수정한 충전 정보를 저장하시겠습니까?")) {
       try {
         // 기존 값 찾기
-        const originalCharge = selectedRow?.charges?.find(
+        const original = depositData.find(
+          (deposit) => deposit.uuid === selectedRow?.uuid
+        );
+        const originalCharge: any = original?.charges?.find(
           (charge) => charge.uuid === selectedCharge.uuid
         );
 
@@ -557,17 +559,21 @@ const Deposit: React.FC = () => {
           },
           {} as Partial<typeof selectedCharge>
         );
-
         // 변경된 값이 없으면 종료
         if (Object.keys(updatedFields).length === 0) {
           alert("수정된 내용이 없습니다.");
           return;
         }
+        // 변경된 값에 기존 값 합치기기
+        const finalFields = {
+          ...originalCharge,
+          ...updatedFields,
+        };
 
         // API 요청
         const response = await axios.put(
           `/sheet/deposit/${selectedRow?.uuid}/charge/${selectedCharge.uuid}`,
-          updatedFields, // 변경된 값만 보냄
+          finalFields,
           { withCredentials: true }
         );
 
@@ -1181,7 +1187,7 @@ const Deposit: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {Array.isArray(depositData) ? (
+            {Array.isArray(depositData) && depositData.length !== 0 ? (
               depositData.map((row) => (
                 <tr
                   key={row.uuid}
@@ -1192,7 +1198,6 @@ const Deposit: React.FC = () => {
                     cursor: "pointer",
                     whiteSpace: "nowrap",
                     textAlign: "center",
-                    // backgroundColor: row.uuid === highlightrow ? "blue" : "",
                   }}
                 >
                   <td>
@@ -1277,7 +1282,7 @@ const Deposit: React.FC = () => {
               ))
             ) : (
               <tr>
-                <td colSpan={19} className="text-center text-danger">
+                <td colSpan={23} className="text-left text-danger">
                   데이터가 없습니다.
                 </td>
               </tr>

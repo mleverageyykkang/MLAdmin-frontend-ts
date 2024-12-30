@@ -58,28 +58,32 @@ const AccountList: React.FC = () => {
 
   const getAccounts = async () => {
     try {
-      const response = await axios.get("/sheet/account");
-      setAccountData(response.data.body);
+      const response: any = await axios.get("/sheet/account");
+      // admin이면 selectedMarketer filter
+      if (userRole === "admin" || userRole === "system") {
+        const filteredResponse = response.data.body.filter(
+          (item: any) => item.marketerUid === selectedMarketer
+        );
+        setAccountData(filteredResponse);
+      } else if (userRole === "user") {
+        const userFilteredResponse = response.data.body.filter(
+          (item: any) => item.marketerUid === userId
+        );
+        setAccountData(userFilteredResponse);
+      }
       //203 에러 : 등록된 광고주 계정이 없습니다.
       if (response.status === 203) console.error(response.data.result.message);
     } catch (error) {
       console.error("Failed to fetch data:", error);
     }
   };
-  // getAccounts();
 
   //초기 데이터 로드
   useEffect(() => {
     const initializeData = async () => {
       await fetchUser();
       if (userRole && userId) {
-        if (userRole === "user") {
-          getAccounts();
-        } else if (userRole === "admin" || userRole === "system") {
-          // if (selectedMarketer) {
-          getAccounts(); //selectedMarketer (부장님) 을 먼저 가져오기
-          // }
-        }
+        getAccounts();
       }
     };
     initializeData();
@@ -93,7 +97,6 @@ const AccountList: React.FC = () => {
     try {
       // POST 요청에 사용할 데이터에서 임시 uuid 제거
       const { uuid, ...requestData } = editedRow; // uuid 제외
-      console.log(requestData);
       const response = await axios.post("/sheet/account", requestData, {
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -109,8 +112,7 @@ const AccountList: React.FC = () => {
           )
         );
         // 서버에서 최신 데이터 동기화
-        const refreshedData = await axios.get("/sheet/account");
-        setAccountData(refreshedData.data.body);
+        await getAccounts();
         // 상태 초기화
         setEditingRow(null);
         setEditedRow({});
@@ -372,8 +374,7 @@ const AccountList: React.FC = () => {
           );
 
           // 서버에서 최신 데이터 가져오기
-          const refreshedData = await axios.get("/sheet/account");
-          setAccountData(refreshedData.data.body);
+          await getAccounts();
 
           // 상태 초기화
           setButtonState("default");
@@ -551,7 +552,7 @@ const AccountList: React.FC = () => {
               <td>당근</td>
               <td>기타</td>
             </tr>
-            {accountData &&
+            {Array.isArray(accountData) && accountData.length !== 0 ? (
               accountData.map((row) => (
                 <tr
                   key={row.uuid}
@@ -1071,7 +1072,14 @@ const AccountList: React.FC = () => {
                     </>
                   )}
                 </tr>
-              ))}
+              ))
+            ) : (
+              <tr>
+                <td colSpan={44} className="text-left text-danger">
+                  데이터가 없습니다.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
