@@ -2,9 +2,11 @@ import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import dayjs from "dayjs";
 import * as XLSX from "xlsx";
-import ITracking from "../../common/models/traking/ITraking";
 import { useAuth } from "providers/authProvider";
+import ITracking from "../../common/models/traking/ITraking";
 import ISalesResult from "../../common/models/salesResult/ISalesResult";
+import IMediaViral from "../../common/models/mediaViral/IMediaViral";
+import ICardSum from "../../common/models/cardSum/ICardSum";
 
 interface User {
   uid: string;
@@ -29,8 +31,9 @@ const MediaTracking: React.FC = () => {
   const [excelData, setExcelData] = useState<string[][] | null>(null);
   const selectedMediaFiles = useRef<HTMLInputElement>(null);
   const selectedCardFiles = useRef<HTMLInputElement>(null);
-  const [trackingData, setTrackingData] = useState<ITracking[]>([]);
-  const [cardData, setCardData] = useState<ITracking[]>([]);
+  const [mediaData, setMediaData] = useState<ITracking[]>([]);
+  const [cardData, setCardData] = useState<ICardSum[]>([]);
+  const [viralData, setViralData] = useState<IMediaViral[]>([]);
   const [salesResult, setSalesResult] = useState<ISalesResult[]>([]);
 
   const fetchUser = async () => {
@@ -63,9 +66,26 @@ const MediaTracking: React.FC = () => {
         userRole === "system" || userRole == "admin" ? selectedMarketer : userId
       }&year=${selectedYear}&month=${selectedMonth}`;
       const response = await axios.get(url);
-      setTrackingData(response.data.body);
+      setMediaData(response.data.body);
     } catch (error) {
       console.error("Failed to fetch Data:", error);
+    }
+  };
+
+  const getVirals = async () => {
+    try {
+      const url = `/traking/viral?marketerUid=${
+        userRole === "system" || userRole === "admin"
+          ? selectedMarketer
+          : userId
+      }`;
+      const response = await axios.get(url);
+      if (response.status === 200) {
+        console.log("viral:", response.data.body?.mediaViralInfo);
+        setViralData(response.data.body?.mediaViralInfo);
+      }
+    } catch (error) {
+      console.error("Failed to fetch Card Data:", error);
     }
   };
 
@@ -75,9 +95,12 @@ const MediaTracking: React.FC = () => {
         userRole === "system" || userRole === "admin"
           ? selectedMarketer
           : userId
-      }&yaer=${selectedYear}$month=${selectedMonth}`;
+      }`;
       const response = await axios.get(url);
-      console.log("card:", response.data.body);
+      if (response.status === 200) {
+        setCardData(response.data.body);
+        console.log("cardData:", cardData);
+      }
     } catch (error) {
       console.error("Failed to fetch Card Data:", error);
     }
@@ -92,7 +115,6 @@ const MediaTracking: React.FC = () => {
       }&year=${selectedYear}&month=${selectedMonth}`;
       const response = await axios.get(url);
       setSalesResult(response.data.body);
-      console.log(response.data.body);
     } catch (error) {
       console.error("Failed to fetch Card Data:", error);
     }
@@ -102,7 +124,9 @@ const MediaTracking: React.FC = () => {
     const initializeData = async () => {
       await fetchUser();
       if (userRole && userId) {
+        console.log(userRole, userId);
         getMedias();
+        getVirals();
         getCards();
         getSalesResults();
       }
@@ -125,6 +149,33 @@ const MediaTracking: React.FC = () => {
     setSelectedMonth(parseInt(e.target.value, 10));
   };
   const handleMediaFileUpload = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        const data = e.target?.result;
+        if (data) {
+          const workbook = XLSX.read(data, { type: "binary" });
+          const sheetName = workbook.SheetNames[0]; // 첫 번째 시트만 읽음
+          const sheet = workbook.Sheets[sheetName];
+          const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 }); // 2차원 배열 형식으로 변환
+          setExcelData(jsonData as string[][]);
+        }
+      };
+      console.log(excelData);
+
+      reader.onerror = () => {
+        console.error("파일을 읽는 중 오류가 발생했습니다.");
+      };
+
+      reader.readAsBinaryString(file); // 바이너리로 파일 읽기
+    }
+  };
+
+  const handleViralFileUpload = (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
     const file = event.target.files?.[0];
@@ -265,7 +316,7 @@ const MediaTracking: React.FC = () => {
         </thead>
         <tbody>
           <tr className="text-center">
-            {trackingData.map((item) => (
+            {mediaData.map((item) => (
               <>
                 <td>합계</td>
                 <td>{}</td>
@@ -281,7 +332,7 @@ const MediaTracking: React.FC = () => {
               </>
             ))}
           </tr>
-          {trackingData.map((media) =>
+          {mediaData.map((media) =>
             media.mediaViral?.mediaViralInfo?.map((item) => (
               <>
                 <tr className="text-center">
@@ -312,7 +363,7 @@ const MediaTracking: React.FC = () => {
           ref={selectedMediaFiles}
           className="d-none"
           multiple={true}
-          onChange={handleMediaFileUpload}
+          onChange={handleViralFileUpload}
         />
         <button
           className="btn btn-primary"
@@ -338,10 +389,17 @@ const MediaTracking: React.FC = () => {
         </thead>
         <tbody>
           <tr className="text-center">
-            {Array(8)
-              .fill("")
-              .map((_, idx) => (
-                <td key={idx}>값 {idx + 1}</td>
+            {Array.isArray(viralData) &&
+              viralData.map((item) => (
+                <>
+                  <td>{item.media}</td>
+                  <td>{item.clientName}</td>
+                  <td>{item.clientId}</td>
+                  <td>{item.advCost}</td>
+                  <td>{item.commissionRate}</td>
+                  <td>{item.payVatExclude}</td>
+                  <td>{item.payVatInclude}</td>
+                </>
               ))}
           </tr>
         </tbody>
@@ -349,7 +407,7 @@ const MediaTracking: React.FC = () => {
 
       {/* 카드수수료 테이블 */}
       <div className="d-flex justify-content-between align-items-center mb-3">
-        <h5>카드수수료</h5>
+        <h5>카드 수수료</h5>
         <input
           type="file"
           accept=".xlsx, .xls"
@@ -372,9 +430,9 @@ const MediaTracking: React.FC = () => {
           <tr className="text-center">
             <th>년도/월</th>
             <th>매체</th>
-            <th>광고주명</th>
-            <th>광고주ID</th>
-            <th>광고비(VAT-)</th>
+            <th>매체</th>
+            <th>충전비(VAT+)</th>
+            <th>충전비(VAT-)</th>
             <th>수수료율</th>
             <th>지급수수료(VAT-)</th>
             <th>지급수수료(VAT+)</th>
@@ -382,24 +440,25 @@ const MediaTracking: React.FC = () => {
         </thead>
         <tbody>
           <tr className="text-center">
-            {trackingData.map((item) => (
-              <>
-                <td>합계</td>
-                <td>{}</td>
-                <td>{}</td>
-                <td>{}</td>
-                <td></td> {/* {item.card?.advCostSum || 0}*/}
-                <td>- %</td>
-                <td>{item.card?.payVatExcludeSum || 0}</td>
-                <td>{item.card?.payVatIncludeSum || 0}</td>
-              </>
-            ))}
-          </tr>
-          {Array.isArray(trackingData) &&
-            trackingData.map((card) =>
-              card.card?.cardInfo?.map((item) => (
+            {Array.isArray(cardData) &&
+              cardData.map((item) => (
                 <>
-                  <tr className="text-center">
+                  <td>합계</td>
+                  <td>매체</td>
+                  <td>매체</td>
+                  <td>{item.chargeVatIncludeSum || 0}</td>
+                  <td>{item.chargeVatExcludeSum || 0}</td>
+                  <td>- %</td>
+                  <td>{item.payVatExcludeSum || 0}</td>
+                  <td>{item.payVatIncludeSum || 0}</td>
+                </>
+              ))}
+          </tr>
+          <tr className="text-center">
+            {Array.isArray(cardData) &&
+              cardData.map((card) =>
+                card.cardInfo?.map((item: any) => (
+                  <>
                     <td>{dayjs(item.monthDate).format("YYYY년 MM월")}</td>
                     <td>{item.media}</td>
                     <td></td>
@@ -408,10 +467,10 @@ const MediaTracking: React.FC = () => {
                     <td>{item.commissionRate} %</td>
                     <td>{item.payVatExclude}</td>
                     <td>{item.payVatInclude}</td>
-                  </tr>
-                </>
-              ))
-            )}
+                  </>
+                ))
+              )}
+          </tr>
         </tbody>
       </table>
 
@@ -420,7 +479,7 @@ const MediaTracking: React.FC = () => {
       <table className="table table-bordered table-responsive">
         <tbody>
           <tr className="text-center text-nowrap">
-            <td rowSpan={2} className="bg-dark text-white ">
+            <td rowSpan={2} className="bg-dark text-white">
               세전
             </td>
             <td>년월</td>
@@ -434,7 +493,9 @@ const MediaTracking: React.FC = () => {
             <td>기본급</td>
             <td>합계</td>
             <td rowSpan={2} className="bg-dark text-white">
-              인센티브
+              인센
+              <br />
+              티브
             </td>
             <td>신고금액</td>
             <td>소득/주민세 합계</td>
@@ -444,18 +505,21 @@ const MediaTracking: React.FC = () => {
             <>
               <tr className="text-center text-nowrap">
                 <td>{dayjs(item.monthDate).format("YYYY년 MM월")}</td>
-                <td>{item.incentiveRate || 0} %</td>
-                <td>{item.incentive || 0}</td>
-                <td>{item.mentorAccProp || 0} %</td>
-                <td>{item.amtProp || 0}</td>
-                <td>{item.mentorPayProp || 0}</td>
-                <td>{item.mentorPay || 0}</td>
-                <td>{item.finalIncentive || 0}</td>
-                <td>2,250,000</td>
-                <td>{item.total || 0}</td>
-                <td>{item.finalIncentive || 0}</td>
-                <td>{item.dutyAmount || 0}</td>
-                <td>{item.preTaxSalary || 0}</td>
+                <td>{item.incentiveCalculation?.incentiveRate || 0} %</td>
+                <td>{item.incentiveCalculation?.incentive || 0}</td>
+                <td>{item.incentiveCalculation?.mentorAccProp || 0} %</td>
+                <td>{item.incentiveCalculation?.amtProp || 0}</td>
+                <td>{item.incentiveCalculation?.mentorPayProp || 0} %</td>
+                <td>{item.incentiveCalculation?.mentorPay || 0}</td>
+                {/* 사수 입장에서 받을 합산 */}
+                {/* <td>{item.incentiveCalculation?.mentorPaySum || 0}</td> */}
+                <td>{item.preTaxSalary?.finalIncentive || 0}</td>
+                <td>{item.preTaxSalary?.basicSalary}</td>
+                <td>{item.preTaxSalary?.total || 0}</td>
+                <td>{item.afterTaxIncentive?.finalAmount || 0}</td>
+                <td>{item.afterTaxIncentive?.dutyAmount || 0}</td>
+                <td>{item.afterTaxIncentive?.sendIncentive || 0}</td>
+                {/* <td>{item.preTaxSalary || 0}</td> */}
               </tr>
             </>
           ))}

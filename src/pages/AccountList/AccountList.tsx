@@ -40,13 +40,13 @@ const AccountList: React.FC = () => {
       const user: User = response.data.context.user;
       setUserRole(user.role);
       setUserId(user.uid);
-      if (user.role === "admin" || user.role === "system") {
-        const marketerResponse = response.data.body;
-        const marketers = marketerResponse
-          .filter((marketer: any) => marketer.departmentUuid === "3")
-          .sort((a: any, b: any) => a.positionUuid - b.positionUuid)
-          .map((marketer: any) => ({ uid: marketer.uid, name: marketer.name }));
+      const marketerResponse = response.data.body;
+      const marketers = marketerResponse
+        .filter((marketer: any) => marketer.departmentUuid === "3")
+        .sort((a: any, b: any) => a.positionUuid - b.positionUuid)
+        .map((marketer: any) => ({ uid: marketer.uid, name: marketer.name }));
         setMarketerList(marketers);
+      if (user.role === "admin" || user.role === "system") {
         if (marketerList.length >= 0 && !selectedMarketer) {
           setSelectedMarketer(marketers[0].uid);
         }
@@ -72,7 +72,8 @@ const AccountList: React.FC = () => {
         setAccountData(userFilteredResponse);
       }
       //203 에러 : 등록된 광고주 계정이 없습니다.
-      if (response.status === 203) console.error(response.data.result.message);
+      if (response.status === 203)
+        console.error(response?.data?.result?.message);
     } catch (error) {
       console.error("Failed to fetch data:", error);
     }
@@ -120,9 +121,11 @@ const AccountList: React.FC = () => {
       } else {
         alert("등록 중 문제가 발생했습니다.");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("등록 실패:", error);
-      alert("등록 중 문제가 발생했습니다.");
+      alert(
+        error.response?.data?.result?.message || "등록 중 문제가 발생했습니다."
+      );
     }
   };
 
@@ -382,9 +385,12 @@ const AccountList: React.FC = () => {
           setEditedRow({});
           setSelectedRow(null);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("저장 실패:", error);
-        alert("저장 중 문제가 발생했습니다.");
+        alert(
+          error.response?.data?.result?.message ||
+            "저장 중 문제가 발생했습니다."
+        );
       }
     }
   };
@@ -1020,7 +1026,7 @@ const AccountList: React.FC = () => {
                       <td>{row.businessType2}</td>
                       <td>{row.companyEmail}</td>
                       <td>{row.marketerEmail}</td>
-                      <td>{row.spending}</td>
+                      <td>{row.spending?.toLocaleString()}</td>
                       <td>{row.point}</td>
                       <td>
                         {row.transferDate
@@ -1075,7 +1081,7 @@ const AccountList: React.FC = () => {
               ))
             ) : (
               <tr>
-                <td colSpan={44} className="text-left text-danger">
+                <td colSpan={44} className="text-left text-secondary">
                   데이터가 없습니다.
                 </td>
               </tr>

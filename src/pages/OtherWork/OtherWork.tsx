@@ -90,7 +90,8 @@ const OtherWork: React.FC = () => {
             <div>
               <button className="btn btn-primary mr-2">수정</button>
               <button className="btn btn-danger mr-2">삭제</button>
-              <button className="btn btn-secondary ">취소</button>
+              <button className="btn btn-success mr-2">등록</button>
+              <button className="btn btn-secondary">취소</button>
             </div>
           </div>
           <table className="table">

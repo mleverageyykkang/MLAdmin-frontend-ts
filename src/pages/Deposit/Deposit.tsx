@@ -112,7 +112,6 @@ const Deposit: React.FC = () => {
       const url = `/sheet/deposit?marketerUid=${marketerUid}&year=${selectedYear}&month=${selectedMonth}`;
       const response = await axios.get(url);
       setDepositData(response.data.body);
-      console.log(depositData, url);
       if (response.status === 203) console.error(response.data.body);
     } catch (error) {
       console.error("Failed to get DepositData: ", error);
@@ -123,7 +122,6 @@ const Deposit: React.FC = () => {
   useEffect(() => {
     const initializeData = async () => {
       await fetchUserRole(); // userRole과 userId를 설정
-      console.log(userId, userRole);
       if (userRole && userId) {
         // userRole에 따라 적절한 데이터를 가져옴
         if (userRole === "user") {
@@ -212,10 +210,8 @@ const Deposit: React.FC = () => {
       const response = await axios.post("/sheet/deposit", requestData, {
         withCredentials: true,
       });
-      console.log("등록 성공:", response.data);
 
       // 성공적으로 등록한 경우 테이블 업데이트
-
       setDepositData((prev) => [response.data, ...prev]);
       if (userRole && userId) {
         // userRole에 따라 적절한 데이터를 가져옴
@@ -227,7 +223,6 @@ const Deposit: React.FC = () => {
           }
         }
       }
-      console.log("등록 후 data:", depositData);
       setNewDeposit({
         uuid: `temp-${Date.now()}`,
         progressDate: new Date(),
@@ -243,7 +238,9 @@ const Deposit: React.FC = () => {
       });
     } catch (error: any) {
       console.error("등록 실패:", error);
-      alert(error.response.data.result.message || "입금 등록에 실패했습니다.");
+      alert(
+        error.response?.data?.result?.message || "입금 등록에 실패했습니다."
+      );
     }
   };
 
@@ -319,9 +316,6 @@ const Deposit: React.FC = () => {
         requestData,
         { withCredentials: true }
       );
-
-      console.log("충전 성공:", response.data);
-
       // 서버에서 최신 충전 데이터를 가져옴
       const chargesResponse = await axios.get(
         `/sheet/deposit/${selectedRow?.uuid}/charge`,
@@ -330,7 +324,6 @@ const Deposit: React.FC = () => {
       const updatedCharges = chargesResponse.data.body.charges; // 최신 충전 데이터
       const updatedRechargeableAmount =
         chargesResponse.data.body.rechargeableAmount;
-
       // 선택된 행 업데이트
       setSelectedRow((prev) =>
         prev
@@ -341,7 +334,6 @@ const Deposit: React.FC = () => {
             }
           : null
       );
-
       // 전체 depositData 상태 업데이트
       setDepositData((prevData) =>
         prevData.map((deposit) =>
@@ -418,9 +410,12 @@ const Deposit: React.FC = () => {
       setSelectedRow(null); // 선택 초기화
       setShowDeleteModal(false); // 모달 닫기
       setDeleteInput(""); // 입력 초기화
-    } catch (error) {
+    } catch (error: any) {
       console.error("삭제 실패:", error);
-      alert("삭제 중 문제가 발생했습니다.");
+      alert(
+        error.response?.data?.result?.message ||
+          "삭제 중 문제가가 발생하였습니다."
+      );
     }
   };
 
@@ -478,9 +473,12 @@ const Deposit: React.FC = () => {
         }
         setSelectedCharge(null); // 상태 초기화
         alert("선택한 충전 데이터가 삭제되었습니다.");
-      } catch (error) {
+      } catch (error: any) {
         console.error("충전 데이터 삭제 실패:", error);
-        alert("충전 데이터를 삭제하는데 실패했습니다.");
+        alert(
+          error.response?.data?.result?.message ||
+            "충전 데이터를 삭제하는데 실패했습니다."
+        );
       }
     }
   };
@@ -522,9 +520,11 @@ const Deposit: React.FC = () => {
           }
           setSelectedRow(null);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("입금 데이터 수정 실패:", error);
-        alert("입금 데이터를 수정하는데 실패했습니다.");
+        alert(
+          error.response?.data?.result?.message || "입금 수정을 실패했습니다."
+        );
       }
     }
   };
@@ -781,14 +781,18 @@ const Deposit: React.FC = () => {
                         <option value={processType.DEFAULT}>기본</option>
                         <option value={processType.PRECHARGE}>선충전</option>
                         <option value={processType.DEDUCT}>차감</option>
-                        <option value={processType.REMITPAYCO}>송금/결제(회사)</option>
-                        <option value={processType.REMITPAYDE}>송금/결제(차감)</option>
+                        <option value={processType.REMITPAYCO}>
+                          송금/결제(회사)
+                        </option>
+                        <option value={processType.REMITPAYDE}>
+                          송금/결제(차감)
+                        </option>
                       </select>
                     ) : field === "deductAmount" ? (
                       <input
                         type="text"
                         className="w-100"
-                        value={value?.toLocaleString("") || ""}
+                        value={Number(value) || ""}
                         disabled={
                           selectedRow.processType !== processType.DEDUCT
                         } // 조건부 비활성화
@@ -1127,11 +1131,12 @@ const Deposit: React.FC = () => {
                             : value?.toLocaleString("") || ""
                         }
                         disabled={
-                          selectedCharge?.uuid !== charge.uuid || // selectedRow가 없으면 비활성화
+                          selectedCharge?.uuid !== charge.uuid ||
+                          // selectedRow가 없으면 비활성화
                           (isRemitPayField &&
                             selectedRow?.processType !==
-                              processType.REMITPAYCO) ||
-                          selectedRow?.processType !== processType.REMITPAYDE // remitPay 조건 처리
+                              processType.REMITPAYCO &&
+                            selectedRow?.processType !== processType.REMITPAYDE) // remitPay 조건 처리
                         }
                         onChange={(e) =>
                           handleInputChange(
@@ -1292,7 +1297,7 @@ const Deposit: React.FC = () => {
               ))
             ) : (
               <tr>
-                <td colSpan={23} className="text-left text-danger">
+                <td colSpan={23} className="text-left text-secondary">
                   데이터가 없습니다.
                 </td>
               </tr>
@@ -1321,7 +1326,7 @@ const Deposit: React.FC = () => {
             boxShadow: "0 5px 15px rgba(0, 0, 0, 0.3)",
           }}
         >
-          <h5>삭제 확인</h5>
+          <h5 className="text-center mb-4">삭제 확인</h5>
           <p>삭제하려면 "삭제"를 입력하세요.</p>
           <input
             type="text"
