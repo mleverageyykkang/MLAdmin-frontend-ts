@@ -136,7 +136,21 @@ const MediaTracking: React.FC = () => {
       const response = await axios.get(url);
       setSalesResult(response.data.body);
     } catch (error) {
-      console.error("Failed to fetch Card Data:", error);
+      console.error("Failed to fetch SalesResults Data:", error);
+    }
+  };
+
+  const getExcelMedias = async () => {
+    try {
+      const url = `/traking/media?marketerUid=${
+        userRole === "system" || userRole === "admin"
+          ? selectedMarketer
+          : userId
+      }&year=${selectedYear}&month=${selectedMonth}`;
+      const response = await axios.get(url);
+      setExcelData(response.data.body);
+    } catch (error) {
+      console.error("Failed to fetch Uploaded Media Data:", error);
     }
   };
 
@@ -146,6 +160,7 @@ const MediaTracking: React.FC = () => {
       if (userRole && userId) {
         console.log(userRole, userId);
         getMedias();
+        getExcelMedias();
         getVirals();
         getCards();
         getSalesResults();
@@ -188,7 +203,9 @@ const MediaTracking: React.FC = () => {
 
     console.log("FormData to be sent:", formData);
 
-    const url = `/traking/media?marketerUid=${userRole === "admin" || userRole === "system" ? selectedMarketer : userId}&year=${selectedYear}&month=${selectedMonth}`;
+    const url = `/traking/media?marketerUid=${
+      userRole === "admin" || userRole === "system" ? selectedMarketer : userId
+    }&year=${selectedYear}&month=${selectedMonth}`;
 
     try {
       const response = await axios.post(url, formData, {
@@ -197,12 +214,9 @@ const MediaTracking: React.FC = () => {
         },
       });
       if (response.status === 200) {
-        setExcelData(response.data.body);
-        console.log("ExcelData:",url, response.data.body);
+        console.log("ExcelData:", url, response.data.body);
         alert("파일 업로드 성공!"); // 업로드 성공 메시지
       }
-
-      await getMedias();
     } catch (error) {
       console.error("Error uploading files:", error);
       alert(error || "파일 업로드 실패. 다시 시도해주세요."); // 업로드 실패 메시지
@@ -279,7 +293,6 @@ const MediaTracking: React.FC = () => {
           accept=".xlsx, .xls"
           ref={selectedMediaFiles}
           // className="d-none"
-          multiple
           onChange={handleMediaFileUpload}
         />
         <button
