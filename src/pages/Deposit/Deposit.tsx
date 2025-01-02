@@ -28,7 +28,7 @@ const processTypeLabels: Record<string, string> = {
   remitPayDe: "송금/결제(차감)",
 };
 
-const years = Array.from({ length: 6 }, (_, i) => dayjs().year() + i); // 연도 범위 생성 (현재 연도 +/- 5)
+const years = Array.from({ length: 6 }, (_, i) => dayjs().year() - 1 + i); // 연도 범위 생성 (현재 연도 +/- 5)
 const months = Array.from({ length: 12 }, (_, i) => i + 1); // 월 범위 생성
 const currentYear = dayjs().year();
 const currentMonth = dayjs().month() + 1;
@@ -1213,6 +1213,7 @@ const Deposit: React.FC = () => {
                     cursor: "pointer",
                     whiteSpace: "nowrap",
                     textAlign: "center",
+                    color: row.rechargeableAmount === 0 ? "#FFC0CB" : "inherit",
                   }}
                 >
                   <td>

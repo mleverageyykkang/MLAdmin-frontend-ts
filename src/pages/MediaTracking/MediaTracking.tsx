@@ -3,20 +3,21 @@ import axios from "axios";
 import dayjs from "dayjs";
 import * as XLSX from "xlsx";
 import { useAuth } from "providers/authProvider";
-import ITracking from "../../common/models/traking/ITraking";
 import ISalesResult from "../../common/models/salesResult/ISalesResult";
 import IMediaViral from "../../common/models/mediaViral/IMediaViral";
 import ICardSum from "../../common/models/cardSum/ICardSum";
+import ICard from "../../common/models/card/ICard";
+import IMediaViralSum from "../../common/models/mediaViralSum/IMediaViralSum";
 
 interface User {
   uid: string;
   role: string;
 }
 
-const years = Array.from({ length: 6 }, (_, i) => dayjs().year() + i); // 연도 범위 생성 (현재 연도 +/- 5)
+const years = Array.from({ length: 6 }, (_, i) => dayjs().year() - 1 + i); // 연도 범위 생성 (현재 연도 +/- 5)
 const months = Array.from({ length: 12 }, (_, i) => i + 1); // 월 범위 생성
-const currentYear = dayjs().year();
-const currentMonth = dayjs().month(); // 현재 월 -1
+const currentYear = dayjs().subtract(1, "month").year(); // 전달의 연도
+const currentMonth = dayjs().subtract(1, "month").month() + 1; // 전달의 월 (1월이 0으로 표시되므로 +1)
 
 const MediaTracking: React.FC = () => {
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
@@ -28,13 +29,32 @@ const MediaTracking: React.FC = () => {
   >([]);
   const [selectedMarketer, setSelectedMarketer] = useState<string>("");
   const { isLoggedIn } = useAuth();
-  const [excelData, setExcelData] = useState<string[][] | null>(null);
-  const selectedMediaFiles = useRef<HTMLInputElement>(null);
+  const [excelData, setExcelData] = useState<IMediaViral[]>();
+  const selectedMediaFiles = useRef<HTMLInputElement | null>(null);
   const selectedCardFiles = useRef<HTMLInputElement>(null);
-  const [mediaData, setMediaData] = useState<ITracking[]>([]);
-  const [cardData, setCardData] = useState<ICardSum[]>([]);
+  const [mediaData, setMediaData] = useState<IMediaViralSum[]>([]);
+  const [cardData, setCardData] = useState<ICardSum>();
   const [viralData, setViralData] = useState<IMediaViral[]>([]);
   const [salesResult, setSalesResult] = useState<ISalesResult[]>([]);
+
+  const labels: any = {
+    payVatExcludeSum: `${selectedYear}년 ${selectedMonth}월`,
+    deductSum: `${selectedYear}년 ${selectedMonth}월 차감액`,
+    payDeductSum: "합산",
+    incenctiveRate: "인센티브 요율",
+    incentive: "년월 인센티브 지급",
+    mentorAccProp: "사수 계정비중",
+    amtProp: "비중 금액",
+    mentorPayProp: "사수 지급비중",
+    mentorPay: "사수 지급액",
+    mentorPaySum: "지급 받을 사수 지급액",
+    finalIncentive: "최종 인센티브 지급",
+    basicSalary: "기본급",
+    total: "합계",
+    finalAmount: "신고금액",
+    dutyAmount: "소득/주민세 합계",
+    sendIncentive: "송금액",
+  };
 
   const fetchUser = async () => {
     try {
@@ -62,13 +82,13 @@ const MediaTracking: React.FC = () => {
 
   const getMedias = async () => {
     try {
-      const url = `/traking?marketerUid=${
+      const url = `/traking/mediaViral?marketerUid=${
         userRole === "system" || userRole == "admin" ? selectedMarketer : userId
       }&year=${selectedYear}&month=${selectedMonth}`;
       const response = await axios.get(url);
       setMediaData(response.data.body);
     } catch (error) {
-      console.error("Failed to fetch Data:", error);
+      console.error("Failed to fetch media Data:", error);
     }
   };
 
@@ -78,14 +98,14 @@ const MediaTracking: React.FC = () => {
         userRole === "system" || userRole === "admin"
           ? selectedMarketer
           : userId
-      }`;
+      }&year=${selectedYear}&month=${selectedMonth}`;
       const response = await axios.get(url);
       if (response.status === 200) {
-        console.log("viral:", response.data.body?.mediaViralInfo);
+        console.log("viral:", response.data.body);
         setViralData(response.data.body?.mediaViralInfo);
       }
     } catch (error) {
-      console.error("Failed to fetch Card Data:", error);
+      console.error("Failed to fetch Viral Data:", error);
     }
   };
 
@@ -95,7 +115,7 @@ const MediaTracking: React.FC = () => {
         userRole === "system" || userRole === "admin"
           ? selectedMarketer
           : userId
-      }`;
+      }&year=${selectedYear}&month=${selectedMonth}`;
       const response = await axios.get(url);
       if (response.status === 200) {
         setCardData(response.data.body);
@@ -148,84 +168,56 @@ const MediaTracking: React.FC = () => {
   const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedMonth(parseInt(e.target.value, 10));
   };
-  const handleMediaFileUpload = (
+
+  const handleMediaFileUpload = async (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
+    const files = event.target.files; // 선택된 파일들
+    console.log("Selected files:", files);
 
-      reader.onload = (e) => {
-        const data = e.target?.result;
-        if (data) {
-          const workbook = XLSX.read(data, { type: "binary" });
-          const sheetName = workbook.SheetNames[0]; // 첫 번째 시트만 읽음
-          const sheet = workbook.Sheets[sheetName];
-          const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 }); // 2차원 배열 형식으로 변환
-          setExcelData(jsonData as string[][]);
-        }
-      };
-      console.log(excelData);
+    if (!files || files.length === 0) {
+      console.error("No files selected");
+      return;
+    }
 
-      reader.onerror = () => {
-        console.error("파일을 읽는 중 오류가 발생했습니다.");
-      };
+    const formData = new FormData();
+    // 서버에서 "file" 필드 이름을 기대하므로 "file"로 설정
+    Array.from(files).forEach((file) => {
+      formData.append("file", file);
+    });
 
-      reader.readAsBinaryString(file); // 바이너리로 파일 읽기
+    console.log("FormData to be sent:", formData);
+
+    const url = `/traking/media?marketerUid=${userRole === "admin" || userRole === "system" ? selectedMarketer : userId}&year=${selectedYear}&month=${selectedMonth}`;
+
+    try {
+      const response = await axios.post(url, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      if (response.status === 200) {
+        setExcelData(response.data.body);
+        console.log("ExcelData:",url, response.data.body);
+        alert("파일 업로드 성공!"); // 업로드 성공 메시지
+      }
+
+      await getMedias();
+    } catch (error) {
+      console.error("Error uploading files:", error);
+      alert(error || "파일 업로드 실패. 다시 시도해주세요."); // 업로드 실패 메시지
+    } finally {
+      event.target.value = ""; // 파일 입력 초기화
     }
   };
 
   const handleViralFileUpload = (
     event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
+  ) => {};
 
-      reader.onload = (e) => {
-        const data = e.target?.result;
-        if (data) {
-          const workbook = XLSX.read(data, { type: "binary" });
-          const sheetName = workbook.SheetNames[0]; // 첫 번째 시트만 읽음
-          const sheet = workbook.Sheets[sheetName];
-          const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 }); // 2차원 배열 형식으로 변환
-          setExcelData(jsonData as string[][]);
-        }
-      };
-      console.log(excelData);
-
-      reader.onerror = () => {
-        console.error("파일을 읽는 중 오류가 발생했습니다.");
-      };
-
-      reader.readAsBinaryString(file); // 바이너리로 파일 읽기
-    }
-  };
-
-  const handleCardFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-
-      reader.onload = (e) => {
-        const data = e.target?.result;
-        if (data) {
-          const workbook = XLSX.read(data, { type: "binary" });
-          const sheetName = workbook.SheetNames[0]; // 첫 번째 시트만 읽음
-          const sheet = workbook.Sheets[sheetName];
-          const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 }); // 2차원 배열 형식으로 변환
-          setExcelData(jsonData as string[][]);
-        }
-      };
-      console.log(excelData);
-
-      reader.onerror = () => {
-        console.error("파일을 읽는 중 오류가 발생했습니다.");
-      };
-
-      reader.readAsBinaryString(file); // 바이너리로 파일 읽기
-    }
-  };
+  const handleCardFileUpload = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {};
 
   // 마케터 필터 변경 처리
   const handleMarketerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -283,10 +275,11 @@ const MediaTracking: React.FC = () => {
         <h5>매체</h5>
         <input
           type="file"
+          id="fileInput"
           accept=".xlsx, .xls"
           ref={selectedMediaFiles}
-          className="d-none"
-          multiple={true}
+          // className="d-none"
+          multiple
           onChange={handleMediaFileUpload}
         />
         <button
@@ -319,34 +312,38 @@ const MediaTracking: React.FC = () => {
             {mediaData.map((item) => (
               <>
                 <td>합계</td>
-                <td>{}</td>
-                <td>{}</td>
-                <td>{}</td>
-                <td>{item.mediaViral?.advCostSum || 0}</td>
+                <td>-</td>
+                <td>-</td>
+                <td>-</td>
+                <td>{item.advCostSum?.toLocaleString() || 0}</td>
                 <td>- %</td>
-                <td>{item.mediaViral?.payVatExcludeSum || 0}</td>
-                <td>{item.mediaViral?.payVatIncludeSum || 0}</td>
+                <td>{item.payVatExcludeSum?.toLocaleString() || 0}</td>
+                <td>{item.payVatIncludeSum?.toLocaleString() || 0}</td>
                 <td>- %</td>
-                <td>{item.mediaViral?.paybackAmountSum || 0}</td>
-                <td>{item.mediaViral?.totalSum || 0}</td>
+                <td>{item.paybackAmountSum?.toLocaleString() || 0}</td>
+                <td>{item.totalSum?.toLocaleString() || 0}</td>
               </>
             ))}
           </tr>
-          {mediaData.map((media) =>
-            media.mediaViral?.mediaViralInfo?.map((item) => (
+          {excelData && excelData?.map((data : any) =>
+            data.mediaViralInfo?.map((item :IMediaViral) => (
               <>
                 <tr className="text-center">
-                  <td>{dayjs(item.monthDate).format("YYYY년 MM월")}</td>
-                  <td>{item.media || 0}</td>
-                  <td>{item.clientName || 0}</td>
-                  <td>{item.clientId || 0}</td>
-                  <td>{item.advCost || 0}</td>
+                  <td>
+                    {item.monthDate
+                      ? dayjs(item.monthDate).format("YYYY년 MM월")
+                      : ""}
+                  </td>
+                  <td>{item.media || ""}</td>
+                  <td>{item.clientName || ""}</td>
+                  <td>{item.clientId || ""}</td>
+                  <td>{item.advCost?.toLocaleString() || 0}</td>
                   <td>{item.commissionRate || 0} %</td>
-                  <td>{item.payVatExclude || 0}</td>
-                  <td>{item.payVatInclude || 0}</td>
+                  <td>{item.payVatExclude?.toLocaleString() || 0}</td>
+                  <td>{item.payVatInclude?.toLocaleString() || 0}</td>
                   <td>{item.paybackRate || 0} %</td>
-                  <td>{item.paybackAmount || 0}</td>
-                  <td>{item.total || 0}</td>
+                  <td>{item.paybackAmount?.toLocaleString() || 0}</td>
+                  <td>{item.total?.toLocaleString() || 0}</td>
                 </tr>
               </>
             ))
@@ -388,20 +385,27 @@ const MediaTracking: React.FC = () => {
           </tr>
         </thead>
         <tbody>
-          <tr className="text-center">
-            {Array.isArray(viralData) &&
-              viralData.map((item) => (
-                <>
+          {Array.isArray(viralData) && viralData.length > 0 ? (
+            viralData.map((item) => (
+              <>
+                <tr className="text-center">
                   <td>{item.media}</td>
                   <td>{item.clientName}</td>
                   <td>{item.clientId}</td>
-                  <td>{item.advCost}</td>
-                  <td>{item.commissionRate}</td>
-                  <td>{item.payVatExclude}</td>
-                  <td>{item.payVatInclude}</td>
-                </>
-              ))}
-          </tr>
+                  <td>{item.advCost?.toLocaleString()}</td>
+                  <td>{item.commissionRate?.toLocaleString()}</td>
+                  <td>{item.payVatExclude?.toLocaleString()}</td>
+                  <td>{item.payVatInclude?.toLocaleString()}</td>
+                </tr>
+              </>
+            ))
+          ) : (
+            <tr>
+              <td colSpan={8} className="text-center text-secondary">
+                데이터가 없습니다.
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
 
@@ -422,14 +426,13 @@ const MediaTracking: React.FC = () => {
             selectedCardFiles.current?.click();
           }}
         >
-          파일 등록
+          불러오기
         </button>
       </div>
       <table className="table table-bordered">
         <thead>
           <tr className="text-center">
             <th>년도/월</th>
-            <th>매체</th>
             <th>매체</th>
             <th>충전비(VAT+)</th>
             <th>충전비(VAT-)</th>
@@ -439,92 +442,108 @@ const MediaTracking: React.FC = () => {
           </tr>
         </thead>
         <tbody>
-          <tr className="text-center">
-            {Array.isArray(cardData) &&
-              cardData.map((item) => (
-                <>
-                  <td>합계</td>
-                  <td>매체</td>
-                  <td>매체</td>
-                  <td>{item.chargeVatIncludeSum || 0}</td>
-                  <td>{item.chargeVatExcludeSum || 0}</td>
-                  <td>- %</td>
-                  <td>{item.payVatExcludeSum || 0}</td>
-                  <td>{item.payVatIncludeSum || 0}</td>
-                </>
-              ))}
-          </tr>
-          <tr className="text-center">
-            {Array.isArray(cardData) &&
-              cardData.map((card) =>
-                card.cardInfo?.map((item: any) => (
-                  <>
-                    <td>{dayjs(item.monthDate).format("YYYY년 MM월")}</td>
-                    <td>{item.media}</td>
-                    <td></td>
-                    <td></td>
-                    <td>{item.chargeVatExclude}</td>
-                    <td>{item.commissionRate} %</td>
-                    <td>{item.payVatExclude}</td>
-                    <td>{item.payVatInclude}</td>
-                  </>
-                ))
-              )}
-          </tr>
+          {cardData && (
+            <tr className="text-center">
+              <td>합계</td>
+              <td>-</td>
+              <td>{cardData?.chargeVatIncludeSum?.toLocaleString() || 0}</td>
+              <td>{cardData?.chargeVatExcludeSum?.toLocaleString() || 0}</td>
+              <td>- %</td>
+              <td>{cardData?.payVatExcludeSum?.toLocaleString() || 0}</td>
+              <td>{cardData?.payVatIncludeSum?.toLocaleString() || 0}</td>
+            </tr>
+          )}
+          {Array.isArray(cardData?.cardInfo) &&
+            cardData?.cardInfo.map((item: ICard) => (
+              <>
+                <tr className="text-center">
+                  <td>
+                    {item.monthDate
+                      ? dayjs(item.monthDate).format("YYYY년 MM월")
+                      : ""}
+                  </td>
+                  <td>{item.media}</td>
+                  <td>{item.chargeVatInclude?.toLocaleString()}</td>
+                  <td>{item.chargeVatExclude?.toLocaleString()}</td>
+                  <td>{item.commissionRate} %</td>
+                  <td>{item.payVatExclude?.toLocaleString()}</td>
+                  <td>{item.payVatInclude?.toLocaleString()}</td>
+                </tr>
+              </>
+            ))}
         </tbody>
       </table>
 
       {/* 세전 및 인센티브 테이블 */}
-      <h5 className="mt-4 mb-4">세전 및 인센티브</h5>
-      <table className="table table-bordered table-responsive">
-        <tbody>
-          <tr className="text-center text-nowrap">
-            <td rowSpan={2} className="bg-dark text-white">
-              세전
-            </td>
-            <td>년월</td>
-            <td>인센티브 요율</td>
-            <td>인센티브 지급</td>
-            <td>사수 계정비중</td>
-            <td>비중 금액</td>
-            <td>사수 지급비중</td>
-            <td>사수 지급액</td>
-            <td>최종 인센티브 지급</td>
-            <td>기본급</td>
-            <td>합계</td>
-            <td rowSpan={2} className="bg-dark text-white">
-              인센
-              <br />
-              티브
-            </td>
-            <td>신고금액</td>
-            <td>소득/주민세 합계</td>
-            <td>송금액</td>
-          </tr>
-          {salesResult.map((item) => (
-            <>
-              <tr className="text-center text-nowrap">
-                <td>{dayjs(item.monthDate).format("YYYY년 MM월")}</td>
-                <td>{item.incentiveCalculation?.incentiveRate || 0} %</td>
-                <td>{item.incentiveCalculation?.incentive || 0}</td>
-                <td>{item.incentiveCalculation?.mentorAccProp || 0} %</td>
-                <td>{item.incentiveCalculation?.amtProp || 0}</td>
-                <td>{item.incentiveCalculation?.mentorPayProp || 0} %</td>
-                <td>{item.incentiveCalculation?.mentorPay || 0}</td>
-                {/* 사수 입장에서 받을 합산 */}
-                {/* <td>{item.incentiveCalculation?.mentorPaySum || 0}</td> */}
-                <td>{item.preTaxSalary?.finalIncentive || 0}</td>
-                <td>{item.preTaxSalary?.basicSalary}</td>
-                <td>{item.preTaxSalary?.total || 0}</td>
-                <td>{item.afterTaxIncentive?.finalAmount || 0}</td>
-                <td>{item.afterTaxIncentive?.dutyAmount || 0}</td>
-                <td>{item.afterTaxIncentive?.sendIncentive || 0}</td>
-                {/* <td>{item.preTaxSalary || 0}</td> */}
-              </tr>
-            </>
-          ))}
-        </tbody>
-      </table>
+      <div className="d-flex">
+        <div className="col-3">
+          <h5 className="mt-4 mb-4">세전</h5>
+          <table className="table table-bordered">
+            {salesResult.map((item, index) => (
+              <tbody key={index}>
+                {Object.entries(item.preTax || {}).map(([key, value]) => (
+                  <tr key={key}>
+                    <td className="w-50">{labels[key]}</td>
+                    <td>{value?.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            ))}
+          </table>
+        </div>
+
+        <div className="col-3">
+          <h5 className="mt-4 mb-4">인센티브 계산</h5>
+          <table className="table table-bordered">
+            {salesResult.map((item, index) => (
+              <tbody key={index}>
+                {Object.entries(item.incentiveCalculation || {}).map(
+                  ([key, value]) => (
+                    <tr key={key}>
+                      <td className="w-50">{labels[key]}</td>
+                      <td>{value?.toLocaleString()}</td>
+                    </tr>
+                  )
+                )}
+              </tbody>
+            ))}
+          </table>
+        </div>
+
+        <div className="col-3">
+          <h5 className="mt-4 mb-4">세전 인센티브 합</h5>
+          <table className="table table-bordered">
+            {salesResult.map((item, index) => (
+              <tbody key={index}>
+                {Object.entries(item.preTaxSalary || {}).map(([key, value]) => (
+                  <tr key={key}>
+                    <td className="w-50">{labels[key]}</td>
+                    <td>{value?.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            ))}
+          </table>
+        </div>
+
+        <div className="col-3">
+          <h5 className="mt-4 mb-4">인센티브액</h5>
+          <table className="table table-bordered">
+            {salesResult.map((item, index) => (
+              <tbody key={index}>
+                {Object.entries(item.afterTaxIncentive || {}).map(
+                  ([key, value]) => (
+                    <tr key={key}>
+                      <td className="w-50">{labels[key]}</td>
+                      <td>{value?.toLocaleString()}</td>
+                    </tr>
+                  )
+                )}
+              </tbody>
+            ))}
+          </table>
+        </div>
+      </div>
     </div>
   );
 };

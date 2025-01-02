@@ -18,7 +18,6 @@ function LoginPage() {
 
     try {
       const response = await axios.post("/token", { uid, password });
-      console.log(response);
       if (response.status === 200) {
         const data = await response;
         login(data.data.token);
