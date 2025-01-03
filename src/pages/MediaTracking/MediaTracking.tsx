@@ -8,6 +8,7 @@ import IMediaViral from "../../common/models/mediaViral/IMediaViral";
 import ICardSum from "../../common/models/cardSum/ICardSum";
 import ICard from "../../common/models/card/ICard";
 import IMediaViralSum from "../../common/models/mediaViralSum/IMediaViralSum";
+import UnmappedModal from "./UnmappedModal";
 
 interface User {
   uid: string;
@@ -36,6 +37,8 @@ const MediaTracking: React.FC = () => {
   const [cardData, setCardData] = useState<ICardSum>();
   const [viralData, setViralData] = useState<IMediaViral[]>([]);
   const [salesResult, setSalesResult] = useState<ISalesResult[]>([]);
+  const [unmappedAccounts, setUnmappedAccounts] = useState<IMediaViral[]>([]);
+  const [showModal, setShowModal] = useState(false);
 
   const labels: any = {
     payVatExcludeSum: `${selectedYear}년 ${selectedMonth}월`,
@@ -101,7 +104,6 @@ const MediaTracking: React.FC = () => {
       }&year=${selectedYear}&month=${selectedMonth}`;
       const response = await axios.get(url);
       if (response.status === 200) {
-        console.log("viral:", response.data.body);
         setViralData(response.data.body?.mediaViralInfo);
       }
     } catch (error) {
@@ -119,7 +121,6 @@ const MediaTracking: React.FC = () => {
       const response = await axios.get(url);
       if (response.status === 200) {
         setCardData(response.data.body);
-        console.log("cardData:", cardData);
       }
     } catch (error) {
       console.error("Failed to fetch Card Data:", error);
@@ -158,7 +159,6 @@ const MediaTracking: React.FC = () => {
     const initializeData = async () => {
       await fetchUser();
       if (userRole && userId) {
-        console.log(userRole, userId);
         getMedias();
         getExcelMedias();
         getVirals();
@@ -184,11 +184,26 @@ const MediaTracking: React.FC = () => {
     setSelectedMonth(parseInt(e.target.value, 10));
   };
 
+  const getUnmappedAccounts = async () => {
+    try {
+      const response = await axios.get(
+        `/traking/unmappedAccount?year=${selectedYear}&month=${selectedMonth}`
+      );
+      setUnmappedAccounts(response.data.body);
+      if (unmappedAccounts) {
+        console.log("unmappedAccounts:", unmappedAccounts);
+        setShowModal(true);
+        console.log(showModal);
+      }
+    } catch (error) {
+      console.error("Failed to fetch unmappedAccounts:", error);
+    }
+  };
+
   const handleMediaFileUpload = async (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
     const files = event.target.files; // 선택된 파일들
-    console.log("Selected files:", files);
 
     if (!files || files.length === 0) {
       console.error("No files selected");
@@ -200,8 +215,6 @@ const MediaTracking: React.FC = () => {
     Array.from(files).forEach((file) => {
       formData.append("file", file);
     });
-
-    console.log("FormData to be sent:", formData);
 
     const url = `/traking/media?marketerUid=${
       userRole === "admin" || userRole === "system" ? selectedMarketer : userId
@@ -217,6 +230,9 @@ const MediaTracking: React.FC = () => {
         alert("파일 업로드 성공!"); // 업로드 성공 메시지
       }
       await getExcelMedias();
+
+      // 미지정 데이터 확인
+      getUnmappedAccounts();
     } catch (error) {
       console.error("Error uploading files:", error);
       alert(error || "파일 업로드 실패. 다시 시도해주세요."); // 업로드 실패 메시지
@@ -312,22 +328,24 @@ const MediaTracking: React.FC = () => {
       {/* 매체 테이블 */}
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h5>매체</h5>
-        <input
-          type="file"
-          id="fileInput"
-          accept=".xlsx, .xls"
-          ref={selectedMediaFiles}
-          // className="d-none"
-          onChange={handleMediaFileUpload}
-        />
-        <button
-          className="btn btn-primary"
-          onClick={() => {
-            selectedMediaFiles.current?.click();
-          }}
-        >
-          파일 등록
-        </button>
+        <div className="d-flex">
+          <input
+            type="file"
+            id="fileInput"
+            accept=".xlsx, .xls"
+            ref={selectedMediaFiles}
+            className="d-none"
+            onChange={handleMediaFileUpload}
+          />
+          <button
+            className="btn btn-primary"
+            onClick={() => {
+              selectedMediaFiles.current?.click();
+            }}
+          >
+            파일 등록
+          </button>
+        </div>
       </div>
       <table className="table table-bordered table-striped">
         <thead>
@@ -671,6 +689,15 @@ const MediaTracking: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* 미지정 데이터 모달 */}
+      {showModal && (
+        <UnmappedModal
+          showModal={showModal}
+          setShowModal={setShowModal}
+          unmappedAccounts={unmappedAccounts}
+        />
+      )}
     </div>
   );
 };
