@@ -1,24 +1,53 @@
-td[rowSpan] {
-  vertical-align: middle;
-  text-align: center;
-}
-td > input[type="text"],
-td > input[type="Date"],
-td > input[type="number"] {
-  width: 100%;
-  height: 25px;
-}
+.accountTable{
+  table {
+    border-collapse: separate; /* 테두리가 겹치지 않도록 설정 */
+    border-spacing: 0; /* 셀 간의 간격 제거 */
+    width: 100%; /* 테이블 너비 고정 */
+    td[rowSpan] {
+      vertical-align: middle;
+      text-align: center;
+    }
+    td > input[type="text"],
+    td > input[type="Date"],
+    td > input[type="number"] {
+      width: 100%;
+      height: 25px;
+    }
+    th{
+      position:sticky !important;
+      top: 0;
+      background-color: white; /* 고정된 열의 배경색 */
+      z-index: 3; /* 고정 열이 다른 요소 위로 올라오도록 설정 */
+    }
+    tbody>tr:first-child{
+      position:sticky !important;
+      top: 51px;
+      background-color: white; /* 고정된 열의 배경색 */
+      z-index: 3; /* 고정 열이 다른 요소 위로 올라오도록 설정 */
+      will-change: transform;
+    }
+    tbody>tr:nth-child(2){
+      position :sticky;
+      top: 101px;
+      background-color: white; /* 고정된 열의 배경색 */
+      z-index: 2; /* 고정 열이 다른 요소 위로 올라오도록 설정 */
+      will-change: transform;
+    }
+    th:first-child,
+    td[rowSpan]:first-child{
+      position: sticky;
+      left: 0;
+      background-color: white; /* 고정된 열의 배경색 */
+      z-index: 5; 
+      will-change: transform;
+    }
+    td:has(input[type="checkbox"]):first-child{
+      position: sticky;
+      left: 0;
+      background-color: white; /* 고정된 열의 배경색 */
+      z-index: 1; 
+      will-change: transform;
+    }
+  }
 
-th:first-child,
-td[rowSpan]:first-child, 
-td:has(input[type="checkbox"]):first-child{
-  position: sticky;
-  left: 0;
-  background-color: white; /* 고정된 열의 배경색 */
-  z-index: 2; /* 고정 열이 다른 요소 위로 올라오도록 설정 */
-}
-table {
-  border-collapse: separate; /* 테두리가 겹치지 않도록 설정 */
-  border-spacing: 0; /* 셀 간의 간격 제거 */
-  width: 100%; /* 테이블 너비 고정 */
 }

@@ -8,7 +8,7 @@ import IAccount, {
 } from "../../common/models/account/IAccount";
 import dayjs from "dayjs";
 import qs from "qs";
-import "./AccountList.module.scss";
+import AccountStyles from "./AccountList.module.scss";
 
 interface User {
   uid: string;
@@ -45,7 +45,7 @@ const AccountList: React.FC = () => {
         .filter((marketer: any) => marketer.departmentUuid === "3")
         .sort((a: any, b: any) => a.positionUuid - b.positionUuid)
         .map((marketer: any) => ({ uid: marketer.uid, name: marketer.name }));
-        setMarketerList(marketers);
+      setMarketerList(marketers);
       if (user.role === "admin" || user.role === "system") {
         if (marketerList.length >= 0 && !selectedMarketer) {
           setSelectedMarketer(marketers[0].uid);
@@ -479,8 +479,11 @@ const AccountList: React.FC = () => {
         </div>
       </div>
 
-      <div className="table-full-width px-0 table-responsive">
-        <table className="table table-bordered">
+      <div
+        className={`${AccountStyles.accountTable} table-full-width px-0 table-responsive`}
+        style={{ overflow: "auto", maxHeight: "730px" }}
+      >
+        <table className="table table-bordered ">
           <thead>
             <tr className="text-nowrap text-center">
               <th colSpan={1}></th>
@@ -562,7 +565,7 @@ const AccountList: React.FC = () => {
               accountData.map((row) => (
                 <tr
                   key={row.uuid}
-                  className="text-nowrap"
+                  className="text-nowrap text-center"
                   style={{
                     backgroundColor:
                       editingRow === row.uuid ? "#f0f8ff" : "transparent", // 선택 시 강조
@@ -1018,9 +1021,26 @@ const AccountList: React.FC = () => {
                       <td>{row.advertiserName}</td>
                       <td>{row.residentNumber}</td>
                       <td>{row.managerName}</td>
-                      <td>{row.phone}</td>
+                      <td>
+                        {row.phone?.length === 11
+                          ? `${row.phone.slice(0, 3)}-${row.phone.slice(
+                              3,
+                              7
+                            )}-${row.phone.slice(7)}`
+                          : row.phone}
+                      </td>
                       <td>{row.businessReg}</td>
-                      <td>{row.businessNumber}</td>
+                      <td>
+                        {row.businessNumber?.length === 10
+                          ? `${row.businessNumber.slice(
+                              0,
+                              3
+                            )}-${row.businessNumber.slice(
+                              3,
+                              5
+                            )}-${row.businessNumber.slice(5)}`
+                          : row.businessNumber}
+                      </td>
                       <td>{row.businessAddress}</td>
                       <td>{row.businessType1}</td>
                       <td>{row.businessType2}</td>

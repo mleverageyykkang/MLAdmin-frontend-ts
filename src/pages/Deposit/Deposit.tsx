@@ -8,7 +8,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "providers/authProvider";
 import ICharge from "../../common/models/charge/ICharge";
-import "./Deposit.module.scss";
+import depositStyles from "./Deposit.module.scss";
 
 interface User {
   uid: string;
@@ -80,6 +80,7 @@ const Deposit: React.FC = () => {
   const [selectedMarketer, setSelectedMarketer] = useState<string>(""); // 선택된 마케터 UID
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   const [selectedMonth, setSelectedMonth] = useState<number>(currentMonth);
+  const [selectedView, setSelectedView] = useState<string>("");
 
   //role 확인
   const fetchUserRole = async () => {
@@ -109,7 +110,7 @@ const Deposit: React.FC = () => {
   //전체입금내역 불러오기
   const getDeposits = async (marketerUid = "") => {
     try {
-      const url = `/sheet/deposit?marketerUid=${marketerUid}&year=${selectedYear}&month=${selectedMonth}`;
+      const url = `/sheet/deposit?marketerUid=${marketerUid}&view=${selectedView}&year=${selectedYear}&month=${selectedMonth}`;
       const response = await axios.get(url);
       setDepositData(response.data.body);
       if (response.status === 203) console.error(response.data.body);
@@ -134,7 +135,14 @@ const Deposit: React.FC = () => {
       }
     };
     initializeData();
-  }, [selectedMarketer, userRole, userId, selectedYear, selectedMonth]);
+  }, [
+    selectedView,
+    selectedMarketer,
+    userRole,
+    userId,
+    selectedYear,
+    selectedMonth,
+  ]);
 
   // 마케터 필터 변경 처리
   const handleMarketerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -638,6 +646,11 @@ const Deposit: React.FC = () => {
   const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedMonth(parseInt(e.target.value, 10));
   };
+
+  const handleViewChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedView(e.target.value);
+  };
+
   return (
     <div>
       {/* 필터 */}
@@ -1164,15 +1177,23 @@ const Deposit: React.FC = () => {
           <button className="btn btn-danger mr-2" onClick={handleDeleteClick}>
             삭제
           </button>
-          <select className="h-100" name="" id="">
+          <select
+            className="h-100"
+            value={selectedView}
+            onChange={handleViewChange}
+          >
             전체
-            <option value="total">전체</option>
-            <option value="finished">완료</option>
-            <option value="unfinished">미완료</option>
+            <option value="">전체</option>
+            <option value="progress">진행중</option>
+            <option value="complete">완료</option>
+            <option value="refund">환불</option>
           </select>
         </div>
       </div>
-      <div className="table-full-width px-0 table-responsive">
+      <div
+        className={`${depositStyles.depositTable} table-full-width px-0 table-responsive`}
+        style={{ overflow: "auto", maxHeight: "740px" }}
+      >
         <table className="table table-hover table-bordered">
           <thead>
             <tr className="text-nowrap text-center">
@@ -1202,7 +1223,7 @@ const Deposit: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {Array.isArray(depositData) && depositData.length !== 0 ? (
+            {Array.isArray(depositData) && depositData.length >= 0 ? (
               depositData.map((row) => (
                 <tr
                   key={row.uuid}

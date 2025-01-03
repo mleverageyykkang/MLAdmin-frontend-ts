@@ -1,24 +1,34 @@
-table {
-  input[type="text"]{
-    width: 100%; // 너비를 120%로 설정
-    max-width: none; // 기본 Bootstrap 너비 제한 해제
-    height: 25px;
+.depositTable{
+  table {
+    border-collapse: separate; /* 테두리가 겹치지 않도록 설정 */
+    border-spacing: 0; /* 셀 간의 간격 제거 */
+    width: 100%; /* 테이블 너비 고정 */
+    td > input[type="text"],
+    td > input[type="Date"],
+    td > input[type="number"]{
+      width: 100%; // 너비를 120%로 설정
+      height: 25px;
+    }
+    select{
+      height:25px;
+    }
+    th{
+      position: sticky !important;
+      top: 0;
+      background-color: white;
+      z-index: 3; 
+    }
+    th:first-child{
+      position: sticky;
+      left: 0;
+      background-color: white; /* 고정된 열의 배경색 */
+      z-index: 5; /* 고정 열이 다른 요소 위로 올라오도록 설정 */
+    }
+    td:has(input[type="checkbox"]):first-child{
+      position: sticky;
+      left: 0;
+      background-color: white; /* 고정된 열의 배경색 */
+      z-index: 1; /* 고정 열이 다른 요소 위로 올라오도록 설정 */
+    }
   }
-  select{
-    height:25px;
-  }
-}
-
-th:first-child,
-td[rowSpan]:first-child, 
-td:has(input[type="checkbox"]):first-child{
-  position: sticky;
-  left: 0;
-  background-color: white; /* 고정된 열의 배경색 */
-  z-index: 2; /* 고정 열이 다른 요소 위로 올라오도록 설정 */
-}
-table {
-  border-collapse: separate; /* 테두리가 겹치지 않도록 설정 */
-  border-spacing: 0; /* 셀 간의 간격 제거 */
-  width: 100%; /* 테이블 너비 고정 */
 }

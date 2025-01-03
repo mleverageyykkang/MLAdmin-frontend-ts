@@ -214,9 +214,9 @@ const MediaTracking: React.FC = () => {
         },
       });
       if (response.status === 200) {
-        console.log("ExcelData:", url, response.data.body);
         alert("파일 업로드 성공!"); // 업로드 성공 메시지
       }
+      await getExcelMedias();
     } catch (error) {
       console.error("Error uploading files:", error);
       alert(error || "파일 업로드 실패. 다시 시도해주세요."); // 업로드 실패 메시지
@@ -237,6 +237,31 @@ const MediaTracking: React.FC = () => {
   const handleMarketerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const marketerUid = e.target.value;
     setSelectedMarketer(marketerUid);
+  };
+
+  const getMediaColor = (media: string) => {
+    if (
+      media === "네이버" ||
+      media === "naver" ||
+      media === "nosp" ||
+      media === "네이버NOSP" ||
+      media === "gfa" ||
+      media === "네이버GFA"
+    )
+      return "#6aa84f";
+    else if (media === "다음" || media === "daum") return "#6d9eeb";
+    else if (media === "모먼트" || media === "moment") return "#e69138";
+    else if (media === "당근" || media === "carot") return "#ff9900";
+    else if (media === "구글" || media === "google") return "#4285f4";
+    else if (media === "바이럴" || media === "viral") return "#7f6000";
+    else if (
+      media === "카카오" ||
+      media === "카카오모먼트" ||
+      media === "kakao" ||
+      media === "momnet"
+    )
+      return "#e69138";
+    else return "transparent";
   };
 
   return (
@@ -304,7 +329,7 @@ const MediaTracking: React.FC = () => {
           파일 등록
         </button>
       </div>
-      <table className="table table-bordered">
+      <table className="table table-bordered table-striped">
         <thead>
           <tr className="text-center">
             <th>년도/월</th>
@@ -321,7 +346,10 @@ const MediaTracking: React.FC = () => {
           </tr>
         </thead>
         <tbody>
-          <tr className="text-center">
+          <tr
+            className="text-center"
+            style={{ backgroundColor: "#666666", color: "white" }}
+          >
             {mediaData.map((item) => (
               <>
                 <td>합계</td>
@@ -338,29 +366,40 @@ const MediaTracking: React.FC = () => {
               </>
             ))}
           </tr>
-          {excelData && excelData?.map((data : any) =>
-            data.mediaViralInfo?.map((item :IMediaViral) => (
-              <>
-                <tr className="text-center">
-                  <td>
-                    {item.monthDate
-                      ? dayjs(item.monthDate).format("YYYY년 MM월")
-                      : ""}
-                  </td>
-                  <td>{item.media || ""}</td>
-                  <td>{item.clientName || ""}</td>
-                  <td>{item.clientId || ""}</td>
-                  <td>{item.advCost?.toLocaleString() || 0}</td>
-                  <td>{item.commissionRate || 0} %</td>
-                  <td>{item.payVatExclude?.toLocaleString() || 0}</td>
-                  <td>{item.payVatInclude?.toLocaleString() || 0}</td>
-                  <td>{item.paybackRate || 0} %</td>
-                  <td>{item.paybackAmount?.toLocaleString() || 0}</td>
-                  <td>{item.total?.toLocaleString() || 0}</td>
-                </tr>
-              </>
-            ))
-          )}
+          {excelData &&
+            excelData?.map((data: any) =>
+              data.mediaViralInfo?.map((item: IMediaViral) => (
+                <>
+                  <tr className="text-center">
+                    <td>
+                      {item.monthDate
+                        ? dayjs(item.monthDate).format("YYYY년 MM월")
+                        : ""}
+                    </td>
+                    <td
+                      style={{
+                        backgroundColor: getMediaColor(item.media || ""),
+                        color:
+                          getMediaColor(item.media || "") !== "transparent"
+                            ? "white"
+                            : "trasparent",
+                      }}
+                    >
+                      {item.media || ""}
+                    </td>
+                    <td>{item.clientName || ""}</td>
+                    <td>{item.clientId || ""}</td>
+                    <td>{item.advCost?.toLocaleString() || 0}</td>
+                    <td>{item.commissionRate || 0} %</td>
+                    <td>{item.payVatExclude?.toLocaleString() || 0}</td>
+                    <td>{item.payVatInclude?.toLocaleString() || 0}</td>
+                    <td>{item.paybackRate || 0} %</td>
+                    <td>{item.paybackAmount?.toLocaleString() || 0}</td>
+                    <td>{item.total?.toLocaleString() || 0}</td>
+                  </tr>
+                </>
+              ))
+            )}
         </tbody>
       </table>
 
@@ -381,10 +420,10 @@ const MediaTracking: React.FC = () => {
             selectedMediaFiles.current?.click();
           }}
         >
-          파일 등록
+          불러오기
         </button>
       </div>
-      <table className="table table-bordered">
+      <table className="table table-bordered table-striped">
         <thead>
           <tr className="text-center">
             <th>년도/월</th>
@@ -402,13 +441,28 @@ const MediaTracking: React.FC = () => {
             viralData.map((item) => (
               <>
                 <tr className="text-center">
-                  <td>{item.media}</td>
-                  <td>{item.clientName}</td>
-                  <td>{item.clientId}</td>
-                  <td>{item.advCost?.toLocaleString()}</td>
-                  <td>{item.commissionRate?.toLocaleString()}</td>
-                  <td>{item.payVatExclude?.toLocaleString()}</td>
-                  <td>{item.payVatInclude?.toLocaleString()}</td>
+                  <td>
+                    {item.monthDate
+                      ? dayjs(item.monthDate).format("YYYY년 MM월")
+                      : ""}
+                  </td>
+                  <td
+                    style={{
+                      backgroundColor: getMediaColor(item.media || ""),
+                      color:
+                        getMediaColor(item.media || "") !== "transparent"
+                          ? "white"
+                          : "trasparent",
+                    }}
+                  >
+                    {item.media || ""}
+                  </td>
+                  <td>{item.clientName || ""}</td>
+                  <td>{item.clientId || ""}</td>
+                  <td>{item.advCost?.toLocaleString() || 0}</td>
+                  <td>{item.commissionRate?.toLocaleString() || 0} %</td>
+                  <td>{item.payVatExclude?.toLocaleString() || 0}</td>
+                  <td>{item.payVatInclude?.toLocaleString() || 0}</td>
                 </tr>
               </>
             ))
@@ -442,7 +496,7 @@ const MediaTracking: React.FC = () => {
           불러오기
         </button>
       </div>
-      <table className="table table-bordered">
+      <table className="table table-bordered table-striped">
         <thead>
           <tr className="text-center">
             <th>년도/월</th>
@@ -455,49 +509,78 @@ const MediaTracking: React.FC = () => {
           </tr>
         </thead>
         <tbody>
-          {cardData && (
-            <tr className="text-center">
-              <td>합계</td>
-              <td>-</td>
-              <td>{cardData?.chargeVatIncludeSum?.toLocaleString() || 0}</td>
-              <td>{cardData?.chargeVatExcludeSum?.toLocaleString() || 0}</td>
-              <td>- %</td>
-              <td>{cardData?.payVatExcludeSum?.toLocaleString() || 0}</td>
-              <td>{cardData?.payVatIncludeSum?.toLocaleString() || 0}</td>
+          {cardData ? (
+            <>
+              <tr
+                className="text-center"
+                style={{ backgroundColor: "#666666", color: "white" }}
+              >
+                <td>합계</td>
+                <td>-</td>
+                <td>{cardData?.chargeVatIncludeSum?.toLocaleString() || 0}</td>
+                <td>{cardData?.chargeVatExcludeSum?.toLocaleString() || 0}</td>
+                <td>- %</td>
+                <td>{cardData?.payVatExcludeSum?.toLocaleString() || 0}</td>
+                <td>{cardData?.payVatIncludeSum?.toLocaleString() || 0}</td>
+              </tr>
+              {Array.isArray(cardData?.cardInfo) &&
+                cardData?.cardInfo.map((item: ICard) => (
+                  <>
+                    <tr className="text-center">
+                      <td>
+                        {item.monthDate
+                          ? dayjs(item.monthDate).format("YYYY년 MM월")
+                          : ""}
+                      </td>
+                      <td
+                        style={{
+                          backgroundColor: getMediaColor(item.media || ""),
+                          color:
+                            getMediaColor(item.media || "") !== "transparent"
+                              ? "white"
+                              : "trasparent",
+                        }}
+                      >
+                        {item.media}
+                      </td>
+                      <td>{item.chargeVatInclude?.toLocaleString()}</td>
+                      <td>{item.chargeVatExclude?.toLocaleString()}</td>
+                      <td>{item.commissionRate} %</td>
+                      <td>{item.payVatExclude?.toLocaleString()}</td>
+                      <td>{item.payVatInclude?.toLocaleString()}</td>
+                    </tr>
+                  </>
+                ))}
+            </>
+          ) : (
+            <tr className="text-center text-secondary">
+              <td colSpan={7}>데이터가 없습니다.</td>
             </tr>
           )}
-          {Array.isArray(cardData?.cardInfo) &&
-            cardData?.cardInfo.map((item: ICard) => (
-              <>
-                <tr className="text-center">
-                  <td>
-                    {item.monthDate
-                      ? dayjs(item.monthDate).format("YYYY년 MM월")
-                      : ""}
-                  </td>
-                  <td>{item.media}</td>
-                  <td>{item.chargeVatInclude?.toLocaleString()}</td>
-                  <td>{item.chargeVatExclude?.toLocaleString()}</td>
-                  <td>{item.commissionRate} %</td>
-                  <td>{item.payVatExclude?.toLocaleString()}</td>
-                  <td>{item.payVatInclude?.toLocaleString()}</td>
-                </tr>
-              </>
-            ))}
         </tbody>
       </table>
 
       {/* 세전 및 인센티브 테이블 */}
       <div className="d-flex">
-        <div className="col-3">
+        <div className="col-3 pl-0">
           <h5 className="mt-4 mb-4">세전</h5>
           <table className="table table-bordered">
             {salesResult.map((item, index) => (
               <tbody key={index}>
                 {Object.entries(item.preTax || {}).map(([key, value]) => (
                   <tr key={key}>
-                    <td className="w-50">{labels[key]}</td>
-                    <td>{value?.toLocaleString()}</td>
+                    <td
+                      className="w-50"
+                      style={{
+                        backgroundColor:
+                          key === "deductSum" ? "#ffc000" : "#434343",
+                        color: "#fff",
+                        fontWeight: key === "deductSum" ? "bold" : "normal",
+                      }}
+                    >
+                      {labels[key]}
+                    </td>
+                    <td className="text-right">{value?.toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>
@@ -513,8 +596,23 @@ const MediaTracking: React.FC = () => {
                 {Object.entries(item.incentiveCalculation || {}).map(
                   ([key, value]) => (
                     <tr key={key}>
-                      <td className="w-50">{labels[key]}</td>
-                      <td>{value?.toLocaleString()}</td>
+                      <td
+                        className="w-50"
+                        style={{
+                          backgroundColor:
+                            key === "incentive" || key === "incenctiveRate"
+                              ? "#434343"
+                              : "#38761d",
+                          color: "white",
+                          fontWeight:
+                            key === "incentive" || key === "incenctiveRate"
+                              ? "normal"
+                              : "bold",
+                        }}
+                      >
+                        {labels[key]}
+                      </td>
+                      <td className="text-right">{value?.toLocaleString()}</td>
                     </tr>
                   )
                 )}
@@ -530,8 +628,16 @@ const MediaTracking: React.FC = () => {
               <tbody key={index}>
                 {Object.entries(item.preTaxSalary || {}).map(([key, value]) => (
                   <tr key={key}>
-                    <td className="w-50">{labels[key]}</td>
-                    <td>{value?.toLocaleString()}</td>
+                    <td
+                      className="w-50"
+                      style={{
+                        backgroundColor: "#454545",
+                        color: "white",
+                      }}
+                    >
+                      {labels[key]}
+                    </td>
+                    <td className="text-right">{value?.toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>
@@ -539,7 +645,7 @@ const MediaTracking: React.FC = () => {
           </table>
         </div>
 
-        <div className="col-3">
+        <div className="col-3 pr-0">
           <h5 className="mt-4 mb-4">인센티브액</h5>
           <table className="table table-bordered">
             {salesResult.map((item, index) => (
@@ -547,8 +653,16 @@ const MediaTracking: React.FC = () => {
                 {Object.entries(item.afterTaxIncentive || {}).map(
                   ([key, value]) => (
                     <tr key={key}>
-                      <td className="w-50">{labels[key]}</td>
-                      <td>{value?.toLocaleString()}</td>
+                      <td
+                        className="w-50"
+                        style={{
+                          backgroundColor: "#454545",
+                          color: "white",
+                        }}
+                      >
+                        {labels[key]}
+                      </td>
+                      <td className="text-right">{value?.toLocaleString()}</td>
                     </tr>
                   )
                 )}

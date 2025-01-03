@@ -11,7 +11,7 @@ const workTypeLabels: Record<string, string> = {
   etc: "기타",
 };
 
-const years = Array.from({ length: 6 }, (_, i) => dayjs().year() + i); // 연도 범위 생성 (현재 연도 +/- 5)
+const years = Array.from({ length: 6 }, (_, i) => dayjs().year() -1 + i); // 연도 범위 생성 (현재 연도 +/- 5)
 const months = Array.from({ length: 12 }, (_, i) => i + 1); // 월 범위 생성
 const currentYear = dayjs().year();
 const currentMonth = dayjs().month() + 1;

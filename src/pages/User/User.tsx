@@ -16,7 +16,7 @@ const User: React.FC = () => {
   const [selectedRow, setSelectedRow] = useState<string | null>(null);
   const [sortOption, setSortOption] = useState<string>("이름");
   const [page, setPage] = useState<number>(1);
-  const pageSize = 10;
+  const pageSize = 12;
   const currenPageData = data.slice((page - 1) * pageSize, page * pageSize);
   const [buttonState, setButtonState] = useState<"default" | "register">(
     "default"
@@ -304,9 +304,9 @@ const User: React.FC = () => {
       </div>
 
       <div className="table-full-width px-0 table-responsive">
-        <table className="table table-bordered text-center ">
+        <table className="table table-bordered">
           <thead>
-            <tr className="text-nowrap">
+            <tr className="text-nowrap text-center">
               <th>선택</th>
               <th>아이디</th>
               <th>이름</th>
@@ -331,7 +331,7 @@ const User: React.FC = () => {
                       ? "#f0f8ff"
                       : "transparent",
                 }}
-                className="text-nowrap"
+                className="text-nowrap text-center"
               >
                 <td>
                   <input
