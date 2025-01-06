@@ -81,6 +81,71 @@ const Deposit: React.FC = () => {
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   const [selectedMonth, setSelectedMonth] = useState<number>(currentMonth);
   const [selectedView, setSelectedView] = useState<string>("");
+  const [draggedColumnIndex, setDraggedColumnIndex] = useState<number | null>(
+    null
+  );
+
+  const [columns, setColumns] = useState([
+    { id: "progressDate", label: "진행일자", accessor: "progressDate" },
+    { id: "company", label: "업체명", accessor: "company" },
+    { id: "depositor", label: "입금자명", accessor: "depositor" },
+    { id: "depositDate", label: "입금일", accessor: "depositDate" },
+    { id: "taxInvoice", label: "세금계산서", accessor: "taxInvoice" },
+    { id: "depositAmount", label: "입금금액", accessor: "depositAmount" },
+    {
+      id: "rechargeableAmount",
+      label: "사용 가능 금액",
+      accessor: "rechargeableAmount",
+    },
+    { id: "deductAmount", label: "차감 금액", accessor: "deductAmount" },
+    { id: "paymentType", label: "결제방식", accessor: "paymentType" },
+    { id: "processType", label: "처리방식", accessor: "processType" },
+
+    // charges 내부 속성 추가
+    { id: "naver", label: "네이버", accessor: "charges.naver" },
+    { id: "gfa", label: "네이버GFA", accessor: "charges.gfa" },
+    { id: "kakao", label: "카카오", accessor: "charges.kakao" },
+    { id: "moment", label: "카카오모먼트", accessor: "charges.moment" },
+    { id: "google", label: "구글", accessor: "charges.google" },
+    { id: "carot", label: "당근", accessor: "charges.carot" },
+    { id: "nosp", label: "네이버NOSP", accessor: "charges.nosp" },
+    { id: "meta", label: "메타", accessor: "charges.meta" },
+    { id: "dable", label: "데이블", accessor: "charges.dable" },
+    { id: "remitPay", label: "송금/결제", accessor: "charges.remitPay" },
+    { id: "netSales", label: "순매출", accessor: "charges.netSales" },
+    { id: "note", label: "비고", accessor: "charges.note" },
+  ]);
+
+  const handleDragEnd = (result: any) => {
+    if (!result.destination) return; // 드래그가 무효한 경우
+    const reorderedColumns = Array.from(columns);
+    const [removed] = reorderedColumns.splice(result.source.index, 1);
+    reorderedColumns.splice(result.destination.index, 0, removed);
+
+    setColumns(reorderedColumns); // 상태 업데이트
+  };
+
+  // Handle drag start
+  const handleDragStart = (index: number) => {
+    setDraggedColumnIndex(index);
+  };
+
+  // Handle drag over
+  const handleDragOver = (e: React.DragEvent<HTMLTableCellElement>) => {
+    e.preventDefault(); // Prevent default behavior to allow drop
+  };
+
+  // Handle drop
+  const handleDrop = (index: number) => {
+    if (draggedColumnIndex === null || draggedColumnIndex === index) return;
+
+    const newColumns = [...columns];
+    const [draggedColumn] = newColumns.splice(draggedColumnIndex, 1);
+    newColumns.splice(index, 0, draggedColumn);
+
+    setColumns(newColumns);
+    setDraggedColumnIndex(null); // Reset dragged index
+  };
 
   //role 확인
   const fetchUserRole = async () => {
@@ -185,9 +250,31 @@ const Deposit: React.FC = () => {
             ? { ...charge, [field]: value } // 선택된 행만 수정
             : charge
         );
+        // 입력된 값 합치기
+        const newRechargeableAmount = updatedCharges?.reduce(
+          (total, charge) =>
+            total +
+            (charge.naver || 0) +
+            (charge.gfa || 0) +
+            (charge.kakao || 0) +
+            (charge.moment || 0) +
+            (charge.google || 0) +
+            (charge.carot || 0) +
+            (charge.nosp || 0) +
+            (charge.meta || 0) +
+            (charge.dable || 0) +
+            (charge.remitPay || 0),
+          0
+        );
 
         setSelectedRow((prev) =>
-          prev ? { ...prev, charges: updatedCharges } : null
+          prev
+            ? {
+                ...prev,
+                charges: updatedCharges,
+                rechargeableAmount: newRechargeableAmount,
+              }
+            : null
         );
         setSelectedCharge(
           (prev) => (prev ? { ...prev, [field]: value } : null) // 선택된 charge도 업데이트
@@ -984,7 +1071,18 @@ const Deposit: React.FC = () => {
       <div className="d-flex justify-content-between my-3">
         <h5>
           충전 (사용가능금액:{" "}
-          {selectedRow?.rechargeableAmount?.toLocaleString("") || 0} 원)
+          {(selectedRow?.rechargeableAmount && newCharge
+            ? selectedRow?.rechargeableAmount -
+              Object.keys(newCharge).reduce(
+                (total, key) =>
+                  typeof newCharge[key as keyof typeof newCharge] === "number"
+                    ? total + Number(newCharge[key as keyof typeof newCharge])
+                    : total,
+                0
+              )
+            : selectedRow?.rechargeableAmount
+          )?.toLocaleString("") || 0}{" "}
+          원)
         </h5>
         <div>
           <button
@@ -1194,37 +1292,31 @@ const Deposit: React.FC = () => {
         className={`${depositStyles.depositTable} table-full-width px-0 table-responsive`}
         style={{ overflow: "auto", maxHeight: "740px" }}
       >
-        <table className="table table-hover table-bordered">
+        <table className="table table-bordered">
           <thead>
-            <tr className="text-nowrap text-center">
-              <th>선택</th>
-              <th>진행일자</th>
-              <th>업체명</th>
-              <th>입금자명</th>
-              <th>입금일</th>
-              <th>세금계산서</th>
-              <th>입금금액</th>
-              <th>사용 가능 금액</th>
-              <th>차감 금액</th>
-              <th>결제방식</th>
-              <th>처리방식</th>
-              <th>네이버</th>
-              <th>네이버GFA</th>
-              <th>카카오</th>
-              <th>카카오모먼트</th>
-              <th>구글</th>
-              <th>당근</th>
-              <th>네이버NOSP</th>
-              <th>메타</th>
-              <th>데이블</th>
-              <th>송금/결제</th>
-              <th>순매출</th>
-              <th>비고</th>
+            <tr className="text-nowrap">
+              <th style={{ backgroundColor: "#f8f9fa" }}>선택</th>
+              {columns.map((column, index) => (
+                <th
+                  key={column.id}
+                  draggable
+                  onDragStart={() => handleDragStart(index)}
+                  onDragOver={handleDragOver}
+                  onDrop={() => handleDrop(index)}
+                  style={{
+                    cursor: "grab",
+                    backgroundColor: "#f8f9fa",
+                    textAlign: "center",
+                  }}
+                >
+                  {column.label}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {Array.isArray(depositData) && depositData.length >= 0 ? (
-              depositData.map((row) => (
+            {Array.isArray(depositData) &&
+              depositData.map((row: any, rowIndex) => (
                 <tr
                   key={row.uuid}
                   onClick={() => {
@@ -1250,80 +1342,32 @@ const Deposit: React.FC = () => {
                       }}
                     />
                   </td>
-                  <td>{dayjs(row.progressDate).format("YYYY-MM-DD")}</td>
-                  <td>{row.company}</td>
-                  <td>{row.depositor}</td>
-                  <td>{dayjs(row.depositDate).format("YYYY-MM-DD")}</td>
-                  <td>{row.taxInvoice}</td>
-                  <td>{row.depositAmount?.toLocaleString()}</td>
-                  <td>{row.rechargeableAmount?.toLocaleString()}</td>
-                  <td>{row.deductAmount?.toLocaleString()}</td>
-                  <td>
-                    {paymentTypeLabels[row.paymentType] || row.paymentType}{" "}
-                  </td>
-                  <td>
-                    {processTypeLabels[row.processType] || row.processType}
-                  </td>
-                  {(() => {
-                    const totals = row.charges?.reduce(
-                      (acc, charge) => {
-                        acc.naver += charge.naver || 0;
-                        acc.gfa += charge.gfa || 0;
-                        acc.kakao += charge.kakao || 0;
-                        acc.moment += charge.moment || 0;
-                        acc.google += charge.google || 0;
-                        acc.carot += charge.carot || 0;
-                        acc.nosp += charge.nosp || 0;
-                        acc.meta += charge.meta || 0;
-                        acc.dable += charge.dable || 0;
-                        acc.remitPay += charge.remitPay || 0;
-                        acc.netSales += charge.netSales || 0;
-                        acc.note += charge.note || "";
-                        return acc;
-                      },
-                      {
-                        naver: 0,
-                        gfa: 0,
-                        kakao: 0,
-                        moment: 0,
-                        google: 0,
-                        carot: 0,
-                        nosp: 0,
-                        meta: 0,
-                        dable: 0,
-                        remitPay: 0,
-                        netSales: 0,
-                        note: "",
-                      }
-                    );
-
-                    return (
-                      <>
-                        <td>{totals?.naver.toLocaleString()}</td>
-                        <td>{totals?.gfa.toLocaleString()}</td>
-                        <td>{totals?.kakao.toLocaleString()}</td>
-                        <td>{totals?.moment.toLocaleString()}</td>
-                        <td>{totals?.google.toLocaleString()}</td>
-                        <td>{totals?.carot.toLocaleString()}</td>
-                        <td>{totals?.nosp.toLocaleString()}</td>
-                        <td>{totals?.meta.toLocaleString()}</td>
-                        <td>{totals?.dable.toLocaleString()}</td>
-                        <td>{totals?.remitPay.toLocaleString()}</td>
-                        <td>{totals?.netSales.toLocaleString()}</td>
-                        <td>{totals?.note.toLocaleString()}</td>
-                      </>
-                    );
-                  })()}
-                  {/* 비고 자리 */}
+                  {columns.map((column) => (
+                    <td
+                      key={`cell-${rowIndex}-${column.id}`}
+                      style={{ textAlign: "center" }}
+                    >
+                      {column.accessor === "progressDate" ||
+                      column.accessor === "depositDate"
+                        ? row[column.accessor]
+                          ? dayjs(row[column.accessor]).format("YYYY-MM-DD")
+                          : "-"
+                        : column.accessor === "processType"
+                        ? processTypeLabels[row[column.accessor]] ||
+                          row[column.accessor]
+                        : column.accessor === "paymentType"
+                        ? paymentTypeLabels[row[column.accessor]] ||
+                          row[column.accessor]
+                        : // : column.accessor.includes(".")
+                          // ? // 2. 중첩 키 처리
+                          //   column.accessor
+                          //     .split(".")
+                          //     .reduce((acc, key) => acc && acc[key], row) || "-"
+                          row[column.accessor]?.toLocaleString()}
+                    </td>
+                  ))}
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={23} className="text-left text-secondary">
-                  데이터가 없습니다.
-                </td>
-              </tr>
-            )}
+              ))}
           </tbody>
         </table>
       </div>

@@ -106,8 +106,13 @@ const MediaTracking: React.FC = () => {
       if (response.status === 200) {
         setViralData(response.data.body?.mediaViralInfo);
       }
-    } catch (error) {
-      console.error("Failed to fetch Viral Data:", error);
+    } catch (error: any) {
+      console.error(
+        "Failed to fetch Viral Data:",
+        error.response?.data?.result?.message
+      );
+      // 에러 발생 시 기존 데이터 초기화
+      setViralData([]);
     }
   };
 
@@ -122,8 +127,12 @@ const MediaTracking: React.FC = () => {
       if (response.status === 200) {
         setCardData(response.data.body);
       }
-    } catch (error) {
-      console.error("Failed to fetch Card Data:", error);
+    } catch (error: any) {
+      console.error(
+        "Failed to fetch Card Data:",
+        error.response?.data?.result?.message
+      );
+      setCardData(undefined);
     }
   };
 
@@ -364,60 +373,70 @@ const MediaTracking: React.FC = () => {
           </tr>
         </thead>
         <tbody>
-          <tr
-            className="text-center"
-            style={{ backgroundColor: "#666666", color: "white" }}
-          >
-            {mediaData.map((item) => (
-              <>
-                <td>합계</td>
-                <td>-</td>
-                <td>-</td>
-                <td>-</td>
-                <td>{item.advCostSum?.toLocaleString() || 0}</td>
-                <td>- %</td>
-                <td>{item.payVatExcludeSum?.toLocaleString() || 0}</td>
-                <td>{item.payVatIncludeSum?.toLocaleString() || 0}</td>
-                <td>- %</td>
-                <td>{item.paybackAmountSum?.toLocaleString() || 0}</td>
-                <td>{item.totalSum?.toLocaleString() || 0}</td>
-              </>
-            ))}
-          </tr>
-          {excelData &&
-            excelData?.map((data: any) =>
-              data.mediaViralInfo?.map((item: IMediaViral) => (
-                <>
-                  <tr className="text-center">
-                    <td>
-                      {item.monthDate
-                        ? dayjs(item.monthDate).format("YYYY년 MM월")
-                        : ""}
-                    </td>
-                    <td
-                      style={{
-                        backgroundColor: getMediaColor(item.media || ""),
-                        color:
-                          getMediaColor(item.media || "") !== "transparent"
-                            ? "white"
-                            : "trasparent",
-                      }}
-                    >
-                      {item.media || ""}
-                    </td>
-                    <td>{item.clientName || ""}</td>
-                    <td>{item.clientId || ""}</td>
-                    <td>{item.advCost?.toLocaleString() || 0}</td>
-                    <td>{item.commissionRate || 0} %</td>
-                    <td>{item.payVatExclude?.toLocaleString() || 0}</td>
-                    <td>{item.payVatInclude?.toLocaleString() || 0}</td>
-                    <td>{item.paybackRate || 0} %</td>
-                    <td>{item.paybackAmount?.toLocaleString() || 0}</td>
-                    <td>{item.total?.toLocaleString() || 0}</td>
-                  </tr>
-                </>
-              ))
-            )}
+          {mediaData.length > 0 ? (
+            <>
+              <tr
+                className="text-center"
+                style={{ backgroundColor: "#666666", color: "white" }}
+              >
+                {mediaData.map((item) => (
+                  <>
+                    <td>합계</td>
+                    <td>-</td>
+                    <td>-</td>
+                    <td>-</td>
+                    <td>{item.advCostSum?.toLocaleString() || 0}</td>
+                    <td>- %</td>
+                    <td>{item.payVatExcludeSum?.toLocaleString() || 0}</td>
+                    <td>{item.payVatIncludeSum?.toLocaleString() || 0}</td>
+                    <td>- %</td>
+                    <td>{item.paybackAmountSum?.toLocaleString() || 0}</td>
+                    <td>{item.totalSum?.toLocaleString() || 0}</td>
+                  </>
+                ))}
+              </tr>
+              {excelData &&
+                excelData?.map((data: any) =>
+                  data.mediaViralInfo?.map((item: IMediaViral) => (
+                    <>
+                      <tr className="text-center">
+                        <td>
+                          {item.monthDate
+                            ? dayjs(item.monthDate).format("YYYY년 MM월")
+                            : ""}
+                        </td>
+                        <td
+                          style={{
+                            backgroundColor: getMediaColor(item.media || ""),
+                            color:
+                              getMediaColor(item.media || "") !== "transparent"
+                                ? "white"
+                                : "trasparent",
+                          }}
+                        >
+                          {item.media || ""}
+                        </td>
+                        <td>{item.clientName || ""}</td>
+                        <td>{item.clientId || ""}</td>
+                        <td>{item.advCost?.toLocaleString() || 0}</td>
+                        <td>{item.commissionRate || 0} %</td>
+                        <td>{item.payVatExclude?.toLocaleString() || 0}</td>
+                        <td>{item.payVatInclude?.toLocaleString() || 0}</td>
+                        <td>{item.paybackRate || 0} %</td>
+                        <td>{item.paybackAmount?.toLocaleString() || 0}</td>
+                        <td>{item.total?.toLocaleString() || 0}</td>
+                      </tr>
+                    </>
+                  ))
+                )}
+            </>
+          ) : (
+            <tr>
+              <td colSpan={11} className="text-center">
+                데이터가 없습니다.
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
 

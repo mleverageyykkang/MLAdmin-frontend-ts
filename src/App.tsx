@@ -20,10 +20,6 @@ import OtherWork from "pages/OtherWork/OtherWork";
 
 const dashboardRoutes = [
   {
-    path: "/dashboard",
-    name: "메인",
-  },
-  {
     path: "/user",
     name: "사용자 관리",
   },
@@ -34,7 +30,6 @@ const dashboardRoutes = [
   {
     path: "/sheet",
     name: "시트 관리",
-    icon: "nc-icon nc-notes",
     items: [
       // { path: "/1", name: "매체 수수료", layout: "/sheet" },
       { path: "/1", name: "계정 리스트", layout: "/sheet" },
@@ -45,7 +40,6 @@ const dashboardRoutes = [
   {
     path: "/tracking",
     name: "매출 트래킹",
-    icon: "nc-icon nc-chart-bar-32",
     items: [
       { path: "/media", name: "매체별", layout: "/tracking" },
       { path: "/total", name: "종합", layout: "/tracking" },
