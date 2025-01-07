@@ -105,17 +105,17 @@ const Deposit: React.FC = () => {
     { id: "processType", label: "처리방식", accessor: "processType" },
 
     // charges 내부 속성 추가
-    { id: "naver", label: "네이버", accessor: "charges.naver" },
-    { id: "gfa", label: "네이버GFA", accessor: "charges.gfa" },
-    { id: "kakao", label: "카카오", accessor: "charges.kakao" },
-    { id: "moment", label: "카카오모먼트", accessor: "charges.moment" },
-    { id: "google", label: "구글", accessor: "charges.google" },
-    { id: "carot", label: "당근", accessor: "charges.carot" },
-    { id: "nosp", label: "네이버NOSP", accessor: "charges.nosp" },
-    { id: "meta", label: "메타", accessor: "charges.meta" },
-    { id: "dable", label: "데이블", accessor: "charges.dable" },
-    { id: "remitPay", label: "송금/결제", accessor: "charges.remitPay" },
-    { id: "netSales", label: "순매출", accessor: "charges.netSales" },
+    { id: "naver", label: "네이버", accessor: "naverSum" },
+    { id: "gfa", label: "네이버GFA", accessor: "gfaSum" },
+    { id: "kakao", label: "카카오", accessor: "kakaoSum" },
+    { id: "moment", label: "카카오모먼트", accessor: "momentSum" },
+    { id: "google", label: "구글", accessor: "googleSum" },
+    { id: "carot", label: "당근", accessor: "carotSum" },
+    { id: "nosp", label: "네이버NOSP", accessor: "nospSum" },
+    { id: "meta", label: "메타", accessor: "metaSum" },
+    { id: "dable", label: "데이블", accessor: "dableSum" },
+    { id: "remitPay", label: "송금/결제", accessor: "remitPaySum" },
+    { id: "netSales", label: "순매출", accessor: "netSalesSum" },
     { id: "note", label: "비고", accessor: "charges.note" },
   ]);
 
@@ -169,7 +169,7 @@ const Deposit: React.FC = () => {
   //전체입금내역 불러오기
   const getDeposits = async (marketerUid = "") => {
     try {
-      const url = `/sheet/deposit?marketerUid=${marketerUid}&view=${selectedView}&year=${selectedYear}&month=${selectedMonth}`;
+      const url = `/sheet/deposit?marketerUid=${marketerUid}&status=${selectedView}&year=${selectedYear}&month=${selectedMonth}`;
       const response = await axios.get(url);
       setDepositData(response.data.body);
       const filtered = response.data.body.map((item: any) => ({
@@ -1473,12 +1473,7 @@ const Deposit: React.FC = () => {
                         : column.accessor === "paymentType"
                         ? paymentTypeLabels[row[column.accessor]] ||
                           row[column.accessor]
-                        : // : column.accessor.includes(".")
-                          // ? // 2. 중첩 키 처리
-                          //   column.accessor
-                          //     .split(".")
-                          //     .reduce((acc, key) => acc && acc[key], row) || "-"
-                          row[column.accessor]?.toLocaleString()}
+                        : row[column.accessor]?.toLocaleString()}
                     </td>
                   ))}
                 </tr>

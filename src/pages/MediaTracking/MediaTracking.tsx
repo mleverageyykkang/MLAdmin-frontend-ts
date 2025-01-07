@@ -56,7 +56,7 @@ const MediaTracking: React.FC = () => {
     total: "합계",
     finalAmount: "신고금액",
     dutyAmount: "소득/주민세 합계",
-    sendIncentive: "송금액",
+    sendAmount: "송금액",
   };
 
   const fetchUser = async () => {
@@ -343,7 +343,7 @@ const MediaTracking: React.FC = () => {
             id="fileInput"
             accept=".xlsx, .xls"
             ref={selectedMediaFiles}
-            className="d-none"
+            // className="d-none"
             onChange={handleMediaFileUpload}
           />
           <button
@@ -710,13 +710,13 @@ const MediaTracking: React.FC = () => {
       </div>
 
       {/* 미지정 데이터 모달 */}
-      {showModal && (
+      {/* {showModal && unmappedAccounts.length > 0 && (
         <UnmappedModal
           showModal={showModal}
           setShowModal={setShowModal}
           unmappedAccounts={unmappedAccounts}
         />
-      )}
+      )} */}
     </div>
   );
 };
