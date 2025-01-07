@@ -8,7 +8,7 @@ function LoginPage() {
   const [uid, setUid] = useState(""); // uid의 타입은 TypeScript가 추론
   const [password, setPassword] = useState(""); // password의 타입도 추론
   const [error, setError] = useState<string | null>(null); // error는 string 또는 null
-  const { login } = useAuth();
+  const { login, username, userid, userrole } = useAuth();
 
   const navigate = useNavigate(); // React Router v6의 useNavigate 사용
 
@@ -19,9 +19,14 @@ function LoginPage() {
     try {
       const response = await axios.post("/token", { uid, password });
       if (response.status === 200) {
-        const data = await response;
-        login(data.data.token);
+        const data = await response.data;
+        login(data.token, {
+          userid: data.context.user.uid,
+          username: data.context.user.name,
+          userrole: data.context.user.role,
+        });
         navigate("/dashboard"); // 로그인 성공 시 대시보드로 이동
+        alert(`환영합니다! ${data.context.user.name}님`);
       }
     } catch (err: any) {
       if (err.response) {

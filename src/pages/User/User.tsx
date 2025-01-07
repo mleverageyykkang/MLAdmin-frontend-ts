@@ -93,11 +93,9 @@ const User: React.FC = () => {
           return;
         }
         // 수정사항 보내기
-        const response = await axios.put(
-          `/user/${editingRow}`,
-          qs.stringify(customFields),
-          { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
-        );
+        const response = await axios.put(`/user/${editingRow}`, customFields, {
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        });
         if (response.status === 200) {
           alert("사용자 정보가 수정되었습니다.");
           const updatedUser = response.data;
@@ -114,9 +112,15 @@ const User: React.FC = () => {
           setEditingRow(null);
           setEditedRow({});
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("저장 실패:", error);
-        alert("저장 중 문제가 발생했습니다.");
+        alert(
+          error.response?.data?.result?.message ||
+            "저장 중 문제가 발생했습니다."
+        );
+        setButtonState("default");
+        setEditingRow(null);
+        setEditedRow({});
       }
     }
   };
@@ -159,12 +163,15 @@ const User: React.FC = () => {
           );
           setSelectedRow(null); // 선택 초기화
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error("삭제 실패:", err);
-        alert("삭제 중 문제가 발생했습니다.");
+        alert(
+          err.response?.data?.result?.message || "삭제 중 문제가 발생했습니다."
+        );
+        setButtonState("default");
+        setEditingRow(null);
+        setEditedRow({});
       }
-    } else {
-      return false;
     }
   };
 
@@ -243,9 +250,15 @@ const User: React.FC = () => {
         setEditingRow(null);
         setEditedRow({});
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("등록 실패:", error);
-      alert("등록 중 문제가 발생했습니다.");
+      alert(
+        error.response?.data?.result?.message || "등록 중 문제가 발생했습니다."
+      );
+      setData((prev) => prev.filter((row) => row.uid !== editingRow));
+      setButtonState("default");
+      setEditingRow(null);
+      setEditedRow({});
     }
   };
 

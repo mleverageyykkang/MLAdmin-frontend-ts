@@ -415,6 +415,9 @@ const AccountList: React.FC = () => {
                 value={selectedMarketer}
                 onChange={handleMarketerChange}
               >
+                <option value="system" key="system">
+                  시스템
+                </option>
                 {marketerList.map((marketer: any, index) => (
                   <option
                     key={marketer.uid}
@@ -1054,11 +1057,11 @@ const AccountList: React.FC = () => {
                           : ""}
                       </td>
                       <td>{row.taxInvoiceInfo}</td>
-                      <td>{row.payback?.naver}</td>
-                      <td>{row.payback?.kakao}</td>
-                      <td>{row.payback?.google}</td>
-                      <td>{row.payback?.carot}</td>
-                      <td>{row.payback?.etc}</td>
+                      <td>{row.payback?.naver} %</td>
+                      <td>{row.payback?.kakao} %</td>
+                      <td>{row.payback?.google} %</td>
+                      <td>{row.payback?.carot} %</td>
+                      <td>{row.payback?.etc} %</td>
                       <td>{row.note}</td>
                       <td>
                         {row.leaveDate

@@ -200,9 +200,7 @@ const MediaTracking: React.FC = () => {
       );
       setUnmappedAccounts(response.data.body);
       if (unmappedAccounts) {
-        console.log("unmappedAccounts:", unmappedAccounts);
         setShowModal(true);
-        console.log(showModal);
       }
     } catch (error) {
       console.error("Failed to fetch unmappedAccounts:", error);

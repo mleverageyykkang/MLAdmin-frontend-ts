@@ -176,7 +176,6 @@ const Deposit: React.FC = () => {
         uuid: item.uuid,
         useableAmount: item.rechargeableAmount,
       }));
-      console.log(filtered);
       setUseableAmounts(filtered);
       if (response.status === 203) console.error(response.data.body);
     } catch (error) {
@@ -1275,8 +1274,6 @@ const Deposit: React.FC = () => {
                               (sum, [, value]) => sum + (value as number),
                               0
                             ); // 값 합산 (타입 단언)
-
-                          console.log("Numeric Fields Sum:", numericFieldsSum);
 
                           // useableAmounts 업데이트 로직
                           if (selectedRow?.uuid) {
