@@ -30,8 +30,8 @@ const processTypeLabels: Record<string, string> = {
 
 const years = Array.from({ length: 6 }, (_, i) => dayjs().year() - 1 + i); // 연도 범위 생성 (현재 연도 +/- 5)
 const months = Array.from({ length: 12 }, (_, i) => i + 1); // 월 범위 생성
-const currentYear = dayjs().year();
-const currentMonth = dayjs().month() + 1;
+const currentYear = 2024; //dayjs().year()
+const currentMonth = 12; //dayjs().month() + 1
 
 const Deposit: React.FC = () => {
   const [userId, setUserId] = useState<string | null>(null);
@@ -84,6 +84,9 @@ const Deposit: React.FC = () => {
   const [draggedColumnIndex, setDraggedColumnIndex] = useState<number | null>(
     null
   );
+  const [useableAmounts, setUseableAmounts] = useState<
+    { uuid: string; useableAmount: number }[]
+  >([]);
 
   const [columns, setColumns] = useState([
     { id: "progressDate", label: "진행일자", accessor: "progressDate" },
@@ -116,26 +119,17 @@ const Deposit: React.FC = () => {
     { id: "note", label: "비고", accessor: "charges.note" },
   ]);
 
-  const handleDragEnd = (result: any) => {
-    if (!result.destination) return; // 드래그가 무효한 경우
-    const reorderedColumns = Array.from(columns);
-    const [removed] = reorderedColumns.splice(result.source.index, 1);
-    reorderedColumns.splice(result.destination.index, 0, removed);
-
-    setColumns(reorderedColumns); // 상태 업데이트
-  };
-
-  // Handle drag start
+  // HTML5 드래그앤드롭 방식 : Handle drag start
   const handleDragStart = (index: number) => {
     setDraggedColumnIndex(index);
   };
 
-  // Handle drag over
+  // HTML5 드래그앤드롭 방식 : Handle drag over
   const handleDragOver = (e: React.DragEvent<HTMLTableCellElement>) => {
     e.preventDefault(); // Prevent default behavior to allow drop
   };
 
-  // Handle drop
+  // HTML5 드래그앤드롭 방식 : Handle drop
   const handleDrop = (index: number) => {
     if (draggedColumnIndex === null || draggedColumnIndex === index) return;
 
@@ -178,6 +172,12 @@ const Deposit: React.FC = () => {
       const url = `/sheet/deposit?marketerUid=${marketerUid}&view=${selectedView}&year=${selectedYear}&month=${selectedMonth}`;
       const response = await axios.get(url);
       setDepositData(response.data.body);
+      const filtered = response.data.body.map((item: any) => ({
+        uuid: item.uuid,
+        useableAmount: item.rechargeableAmount,
+      }));
+      console.log(filtered);
+      setUseableAmounts(filtered);
       if (response.status === 203) console.error(response.data.body);
     } catch (error) {
       console.error("Failed to get DepositData: ", error);
@@ -245,40 +245,53 @@ const Deposit: React.FC = () => {
     if (selectedRow) {
       if (isChargeField && selectedCharge) {
         // 충전 테이블의 특정 행 수정
-        const updatedCharges = selectedRow.charges?.map((charge) =>
-          charge.uuid === selectedCharge.uuid
-            ? { ...charge, [field]: value } // 선택된 행만 수정
-            : charge
-        );
-        // 입력된 값 합치기
-        const newRechargeableAmount = updatedCharges?.reduce(
-          (total, charge) =>
-            total +
-            (charge.naver || 0) +
-            (charge.gfa || 0) +
-            (charge.kakao || 0) +
-            (charge.moment || 0) +
-            (charge.google || 0) +
-            (charge.carot || 0) +
-            (charge.nosp || 0) +
-            (charge.meta || 0) +
-            (charge.dable || 0) +
-            (charge.remitPay || 0),
-          0
-        );
+        const updatedCharges = selectedRow.charges?.map((charge: any) => {
+          if (charge.uuid === selectedCharge.uuid) {
+            const previousValue = (charge[field] as number) || 0; // 기존 값
+            const newValue = typeof value === "number" ? value : 0; // 새 값
+            const delta = newValue - previousValue; // 차이 계산
+
+            // useableAmounts 업데이트
+            setUseableAmounts((prevAmounts) => {
+              const updatedAmounts = [...prevAmounts];
+              const existingEntryIndex = updatedAmounts.findIndex(
+                (entry) => entry.uuid === selectedRow.uuid
+              );
+
+              if (existingEntryIndex !== -1) {
+                updatedAmounts[existingEntryIndex] = {
+                  ...updatedAmounts[existingEntryIndex],
+                  useableAmount:
+                    updatedAmounts[existingEntryIndex].useableAmount - delta, // 차이 반영
+                };
+              } else {
+                updatedAmounts.push({
+                  uuid: selectedRow.uuid,
+                  useableAmount: (selectedRow.rechargeableAmount || 0) - delta, // 새로운 값으로 추가
+                });
+              }
+
+              return updatedAmounts;
+            });
+
+            // 필드 업데이트
+            return { ...charge, [field]: value };
+          }
+          return charge;
+        });
 
         setSelectedRow((prev) =>
           prev
             ? {
                 ...prev,
                 charges: updatedCharges,
-                rechargeableAmount: newRechargeableAmount,
               }
             : null
         );
-        setSelectedCharge(
-          (prev) => (prev ? { ...prev, [field]: value } : null) // 선택된 charge도 업데이트
-        );
+
+        setSelectedCharge((prev) =>
+          prev ? { ...prev, [field]: value } : null
+        ); // 선택된 charge 업데이트
       } else {
         // 일반 입력 필드 수정
         setSelectedRow((prev) => (prev ? { ...prev, [field]: value } : null));
@@ -291,6 +304,7 @@ const Deposit: React.FC = () => {
       }));
     }
   };
+
   const handleRegisterDeposit = async () => {
     // handle에서 temp로 추가하는 값들은 다 없애고 보내기
     try {
@@ -361,15 +375,48 @@ const Deposit: React.FC = () => {
 
   const handleChargeCancelClick = () => {
     if (selectedCharge && selectedRow) {
-      // selectedRow에서 선택된 충전 데이터 찾기
+      // 기존 데이터 수정 취소
       const original = depositData.find(
         (deposit) => deposit.uuid === selectedRow.uuid
       );
-      const originalCharge: any = original?.charges?.find(
+      const originalCharge = original?.charges?.find(
         (charge) => charge.uuid === selectedCharge.uuid
       );
 
-      if (JSON.stringify(originalCharge) !== JSON.stringify(selectedCharge)) {
+      if (originalCharge) {
+        // 기존 값과 수정된 값의 차이를 계산
+        const delta = Object.keys(originalCharge).reduce((sum, key) => {
+          if (typeof originalCharge[key as keyof ICharge] === "number") {
+            const originalValue = originalCharge[
+              key as keyof ICharge
+            ] as number;
+            const currentValue = selectedCharge[key as keyof ICharge] as number;
+
+            return sum + (currentValue - originalValue);
+          }
+          return sum;
+        }, 0);
+
+        // `useableAmounts` 복원
+        setUseableAmounts((prevAmounts) => {
+          const updatedAmounts = [...prevAmounts];
+          const existingEntryIndex = updatedAmounts.findIndex(
+            (entry) => entry.uuid === selectedRow.uuid
+          );
+
+          if (existingEntryIndex !== -1) {
+            updatedAmounts[existingEntryIndex] = {
+              ...updatedAmounts[existingEntryIndex],
+              useableAmount:
+                (updatedAmounts[existingEntryIndex]?.useableAmount || 0) +
+                delta, // 수정된 값 복원
+            };
+          }
+
+          return updatedAmounts;
+        });
+
+        // `selectedRow` 상태 복원
         setSelectedRow((prev) =>
           prev
             ? {
@@ -381,9 +428,34 @@ const Deposit: React.FC = () => {
             : null
         );
       }
+
       setSelectedCharge(null); // 선택 초기화
-    } else {
-      // 새로운 충전 데이터로 초기화
+    } else if (selectedRow) {
+      // 새로운 데이터 등록 취소
+      const numericFieldsSum = Object.entries(newCharge)
+        .filter(([key, value]) => typeof value === "number")
+        .reduce((sum, [, value]) => sum + (value as number), 0);
+
+      // `useableAmounts` 복원
+      setUseableAmounts((prevAmounts) => {
+        const updatedAmounts = [...prevAmounts];
+        const existingEntryIndex = updatedAmounts.findIndex(
+          (entry) => entry.uuid === selectedRow.uuid
+        );
+
+        if (existingEntryIndex !== -1) {
+          updatedAmounts[existingEntryIndex] = {
+            ...updatedAmounts[existingEntryIndex],
+            useableAmount:
+              (updatedAmounts[existingEntryIndex]?.useableAmount || 0) +
+              numericFieldsSum,
+          };
+        }
+
+        return updatedAmounts;
+      });
+
+      // 새로운 충전 데이터 초기화
       setNewCharge({
         uuid: `temp-${Date.now()}`,
         createdAt: new Date(),
@@ -1069,21 +1141,26 @@ const Deposit: React.FC = () => {
 
       {/* 충전 테이블 */}
       <div className="d-flex justify-content-between my-3">
-        <h5>
-          충전 (사용가능금액:{" "}
-          {(selectedRow?.rechargeableAmount && newCharge
-            ? selectedRow?.rechargeableAmount -
-              Object.keys(newCharge).reduce(
-                (total, key) =>
-                  typeof newCharge[key as keyof typeof newCharge] === "number"
-                    ? total + Number(newCharge[key as keyof typeof newCharge])
-                    : total,
-                0
-              )
-            : selectedRow?.rechargeableAmount
-          )?.toLocaleString("") || 0}{" "}
-          원)
-        </h5>
+        <div>
+          <h5>
+            충전 - 사용가능금액 :{" "}
+            <span
+              style={{
+                color:
+                  (useableAmounts.find(
+                    (entry) => entry.uuid === selectedRow?.uuid
+                  )?.useableAmount ?? 0) < 0
+                    ? "red"
+                    : "black",
+              }}
+            >
+              {useableAmounts
+                .find((entry) => entry.uuid === selectedRow?.uuid)
+                ?.useableAmount?.toLocaleString()}{" "}
+              원
+            </span>
+          </h5>
+        </div>
         <div>
           <button
             className="btn btn-primary mr-2"
@@ -1176,19 +1253,57 @@ const Deposit: React.FC = () => {
                           : value?.toLocaleString() || ""
                       }
                       disabled={
-                        !selectedRow || // selectedRow가 없으면 비활성화
+                        !selectedRow ||
+                        (selectedRow.rechargeableAmount ?? 0) <= 0 || // selectedRow가 없으면 비활성화
                         (isRemitPayField &&
                           selectedRow?.processType !== processType.REMITPAYCO &&
                           selectedRow?.processType !== processType.REMITPAYDE) // remitPay 조건 처리
                       }
-                      onChange={(e) =>
-                        setNewCharge((prev) => ({
-                          ...prev,
-                          [field]: isStringField
-                            ? e.target.value // 문자열 필드 처리
-                            : parseInt(e.target.value.replace(/,/g, "")) || 0,
-                        }))
-                      }
+                      onChange={(e) => {
+                        setNewCharge((prev) => {
+                          const updatedCharge = {
+                            ...prev,
+                            [field]: isStringField
+                              ? e.target.value // 문자열 필드 처리
+                              : parseInt(e.target.value.replace(/,/g, "")) || 0,
+                          };
+
+                          // 숫자 필드 합산 로직
+                          const numericFieldsSum = Object.entries(updatedCharge)
+                            .filter(([key, value]) => typeof value === "number") // 숫자 타입 필터링
+                            .reduce(
+                              (sum, [, value]) => sum + (value as number),
+                              0
+                            ); // 값 합산 (타입 단언)
+
+                          console.log("Numeric Fields Sum:", numericFieldsSum);
+
+                          // useableAmounts 업데이트 로직
+                          if (selectedRow?.uuid) {
+                            setUseableAmounts((prevAmounts) => {
+                              const updatedAmounts = [...prevAmounts];
+                              const existingEntryIndex =
+                                updatedAmounts.findIndex(
+                                  (entry) => entry.uuid === selectedRow.uuid
+                                );
+
+                              const useableAmount =
+                                (selectedRow.rechargeableAmount || 0) -
+                                numericFieldsSum;
+
+                              if (existingEntryIndex !== -1) {
+                                // 기존 항목 업데이트
+                                updatedAmounts[existingEntryIndex] = {
+                                  ...updatedAmounts[existingEntryIndex],
+                                  useableAmount,
+                                };
+                              }
+                              return updatedAmounts;
+                            });
+                          }
+                          return updatedCharge; // 상태 업데이트
+                        });
+                      }}
                     />
                   </td>
                 )
@@ -1315,7 +1430,7 @@ const Deposit: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {Array.isArray(depositData) &&
+            {Array.isArray(depositData) && depositData.length > 0 ? (
               depositData.map((row: any, rowIndex) => (
                 <tr
                   key={row.uuid}
@@ -1367,7 +1482,14 @@ const Deposit: React.FC = () => {
                     </td>
                   ))}
                 </tr>
-              ))}
+              ))
+            ) : (
+              <tr>
+                <td colSpan={23} className="text-secondary">
+                  데이터가 없습니다.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
