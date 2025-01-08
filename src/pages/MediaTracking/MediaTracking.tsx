@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import dayjs from "dayjs";
-import * as XLSX from "xlsx";
 import { useAuth } from "providers/authProvider";
 import ISalesResult from "../../common/models/salesResult/ISalesResult";
 import IMediaViral from "../../common/models/mediaViral/IMediaViral";
@@ -39,7 +38,7 @@ const MediaTracking: React.FC = () => {
   const [salesResult, setSalesResult] = useState<ISalesResult[]>([]);
   const [unmappedAccounts, setUnmappedAccounts] = useState<IMediaViral[]>([]);
   const [showModal, setShowModal] = useState(false);
-
+  // 세전 및 인센티브 테이블 레이블 설정정
   const labels: any = {
     payVatExcludeSum: `${selectedYear}년 ${selectedMonth}월`,
     deductSum: `${selectedYear}년 ${selectedMonth}월 차감액`,
@@ -82,7 +81,7 @@ const MediaTracking: React.FC = () => {
       console.error("Failed to fetch Logined User info:", error);
     }
   };
-
+  // 매체 테이블 합계 데이터 불러오기
   const getMedias = async () => {
     try {
       const url = `/traking/mediaViral?marketerUid=${
@@ -90,11 +89,14 @@ const MediaTracking: React.FC = () => {
       }&year=${selectedYear}&month=${selectedMonth}`;
       const response = await axios.get(url);
       setMediaData(response.data.body);
-    } catch (error) {
-      console.error("Failed to fetch media Data:", error);
+    } catch (error: any) {
+      console.error(
+        "매체 데이터 불러오기 실패:",
+        error.response?.data?.result?.message
+      );
     }
   };
-
+  // 바이럴 데이터 불러오기
   const getVirals = async () => {
     try {
       const url = `/traking/viral?marketerUid=${
@@ -108,14 +110,14 @@ const MediaTracking: React.FC = () => {
       }
     } catch (error: any) {
       console.error(
-        "Failed to fetch Viral Data:",
+        "바이럴 데이터 불러오기 실패:",
         error.response?.data?.result?.message
       );
       // 에러 발생 시 기존 데이터 초기화
       setViralData([]);
     }
   };
-
+  // 카드 수수료 데이터 불러오기
   const getCards = async () => {
     try {
       const url = `/traking/card?marketerUid=${
@@ -129,13 +131,13 @@ const MediaTracking: React.FC = () => {
       }
     } catch (error: any) {
       console.error(
-        "Failed to fetch Card Data:",
+        "카드 수수료 데이터 불러오기 실패:",
         error.response?.data?.result?.message
       );
       setCardData(undefined);
     }
   };
-
+  // 세전 및 인센티브 데이터 불러오기
   const getSalesResults = async () => {
     try {
       const url = `/traking/salesResult?marketerUid=${
@@ -149,7 +151,7 @@ const MediaTracking: React.FC = () => {
       console.error("Failed to fetch SalesResults Data:", error);
     }
   };
-
+  // 엑셀 파일 (매체 테이블 리스트) 불러오기
   const getExcelMedias = async () => {
     try {
       const url = `/traking/media?marketerUid=${
@@ -163,7 +165,7 @@ const MediaTracking: React.FC = () => {
       console.error("Failed to fetch Uploaded Media Data:", error);
     }
   };
-
+  //초기 데이터 로드드
   useEffect(() => {
     const initializeData = async () => {
       await fetchUser();
@@ -184,15 +186,14 @@ const MediaTracking: React.FC = () => {
     selectedMonth,
     selectedYear,
   ]);
-
+  // 년도 월 선택택
   const handleYearChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedYear(parseInt(e.target.value, 10));
   };
-
   const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedMonth(parseInt(e.target.value, 10));
   };
-
+  // 미지정 데이터 불러오기
   const getUnmappedAccounts = async () => {
     try {
       const response = await axios.get(
@@ -213,7 +214,7 @@ const MediaTracking: React.FC = () => {
     const files = event.target.files; // 선택된 파일들
 
     if (!files || files.length === 0) {
-      console.error("No files selected");
+      console.error("선택된 파일이 없습니다.");
       return;
     }
 
@@ -240,21 +241,16 @@ const MediaTracking: React.FC = () => {
 
       // 미지정 데이터 확인
       getUnmappedAccounts();
-    } catch (error) {
-      console.error("Error uploading files:", error);
-      alert(error || "파일 업로드 실패. 다시 시도해주세요."); // 업로드 실패 메시지
+    } catch (error: any) {
+      console.error("파일 업로드 실패:", error);
+      alert(
+        error.response?.data?.result?.message ||
+          "파일 업로드 실패. 다시 시도해주세요."
+      ); // 업로드 실패 메시지
     } finally {
       event.target.value = ""; // 파일 입력 초기화
     }
   };
-
-  const handleViralFileUpload = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {};
-
-  const handleCardFileUpload = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {};
 
   // 마케터 필터 변경 처리
   const handleMarketerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -263,6 +259,7 @@ const MediaTracking: React.FC = () => {
   };
 
   const getMediaColor = (media: string) => {
+    // 매체별 색깔 지정
     if (
       media === "네이버" ||
       media === "naver" ||
@@ -336,14 +333,6 @@ const MediaTracking: React.FC = () => {
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h5>매체</h5>
         <div className="d-flex">
-          <input
-            type="file"
-            id="fileInput"
-            accept=".xlsx, .xls"
-            ref={selectedMediaFiles}
-            // className="d-none"
-            onChange={handleMediaFileUpload}
-          />
           <button
             className="btn btn-primary"
             onClick={() => {
@@ -352,6 +341,14 @@ const MediaTracking: React.FC = () => {
           >
             파일 등록
           </button>
+          <input
+            type="file"
+            id="fileInput"
+            accept=".xlsx, .xls"
+            ref={selectedMediaFiles}
+            style={{ display: "none" }}
+            onChange={handleMediaFileUpload}
+          />
         </div>
       </div>
       <table className="table table-bordered table-striped">
@@ -441,18 +438,11 @@ const MediaTracking: React.FC = () => {
       {/* 바이럴 테이블 */}
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h5>바이럴</h5>
-        <input
-          type="file"
-          accept=".xlsx, .xls"
-          ref={selectedMediaFiles}
-          className="d-none"
-          multiple={true}
-          onChange={handleViralFileUpload}
-        />
         <button
           className="btn btn-primary"
           onClick={() => {
-            selectedMediaFiles.current?.click();
+            getVirals();
+            alert("바이럴 정보 불러옴");
           }}
         >
           불러오기
@@ -514,18 +504,11 @@ const MediaTracking: React.FC = () => {
       {/* 카드수수료 테이블 */}
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h5>카드 수수료</h5>
-        <input
-          type="file"
-          accept=".xlsx, .xls"
-          ref={selectedCardFiles}
-          className="d-none"
-          multiple={true}
-          onChange={handleCardFileUpload}
-        />
         <button
           className="btn btn-primary"
           onClick={() => {
-            selectedCardFiles.current?.click();
+            getCards();
+            alert("카드 수수료 정보 불러옴");
           }}
         >
           불러오기
@@ -571,9 +554,9 @@ const MediaTracking: React.FC = () => {
                         style={{
                           backgroundColor: getMediaColor(item.media || ""),
                           color:
-                            getMediaColor(item.media || "") !== "transparent"
-                              ? "white"
-                              : "trasparent",
+                            getMediaColor(item.media || "") === "transparent"
+                              ? "black"
+                              : "white",
                         }}
                       >
                         {item.media}
@@ -615,7 +598,9 @@ const MediaTracking: React.FC = () => {
                     >
                       {labels[key]}
                     </td>
-                    <td className="text-right">{value?.toLocaleString()}</td>
+                    <td className="text-right">
+                      {Number(value)?.toLocaleString()}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -647,7 +632,14 @@ const MediaTracking: React.FC = () => {
                       >
                         {labels[key]}
                       </td>
-                      <td className="text-right">{value?.toLocaleString()}</td>
+                      <td className="text-right">
+                        {Number(value)?.toLocaleString()}
+                        {key === "incenctiveRate" ||
+                        key === "mentorAccProp" ||
+                        key === "mentorPayProp"
+                          ? "%"
+                          : ""}
+                      </td>
                     </tr>
                   )
                 )}
@@ -672,7 +664,9 @@ const MediaTracking: React.FC = () => {
                     >
                       {labels[key]}
                     </td>
-                    <td className="text-right">{value?.toLocaleString()}</td>
+                    <td className="text-right">
+                      {Number(value)?.toLocaleString()}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -697,7 +691,9 @@ const MediaTracking: React.FC = () => {
                       >
                         {labels[key]}
                       </td>
-                      <td className="text-right">{value?.toLocaleString()}</td>
+                      <td className="text-right">
+                        {Number(value)?.toLocaleString()}
+                      </td>
                     </tr>
                   )
                 )}
