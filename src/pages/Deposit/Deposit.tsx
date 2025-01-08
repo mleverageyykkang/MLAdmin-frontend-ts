@@ -87,6 +87,7 @@ const Deposit: React.FC = () => {
   const [useableAmounts, setUseableAmounts] = useState<
     { uuid: string; useableAmount: number }[]
   >([]);
+  const [isAddingNewChargeRow, setIsAddingNewChargeRow] = useState(false); // 새로운 행 추가 상태
 
   const [columns, setColumns] = useState([
     { id: "progressDate", label: "진행일자", accessor: "progressDate" },
@@ -263,13 +264,7 @@ const Deposit: React.FC = () => {
                   useableAmount:
                     updatedAmounts[existingEntryIndex].useableAmount - delta, // 차이 반영
                 };
-              } else {
-                updatedAmounts.push({
-                  uuid: selectedRow.uuid,
-                  useableAmount: (selectedRow.rechargeableAmount || 0) - delta, // 새로운 값으로 추가
-                });
               }
-
               return updatedAmounts;
             });
 
@@ -373,63 +368,64 @@ const Deposit: React.FC = () => {
   };
 
   const handleChargeCancelClick = () => {
-    if (selectedCharge && selectedRow) {
-      // 기존 데이터 수정 취소
-      const original = depositData.find(
-        (deposit) => deposit.uuid === selectedRow.uuid
-      );
-      const originalCharge = original?.charges?.find(
-        (charge) => charge.uuid === selectedCharge.uuid
-      );
-
-      if (originalCharge) {
-        // 기존 값과 수정된 값의 차이를 계산
-        const delta = Object.keys(originalCharge).reduce((sum, key) => {
-          if (typeof originalCharge[key as keyof ICharge] === "number") {
-            const originalValue = originalCharge[
-              key as keyof ICharge
-            ] as number;
-            const currentValue = selectedCharge[key as keyof ICharge] as number;
-
-            return sum + (currentValue - originalValue);
-          }
-          return sum;
-        }, 0);
-
-        // `useableAmounts` 복원
-        setUseableAmounts((prevAmounts) => {
-          const updatedAmounts = [...prevAmounts];
-          const existingEntryIndex = updatedAmounts.findIndex(
-            (entry) => entry.uuid === selectedRow.uuid
-          );
-
-          if (existingEntryIndex !== -1) {
-            updatedAmounts[existingEntryIndex] = {
-              ...updatedAmounts[existingEntryIndex],
-              useableAmount:
-                (updatedAmounts[existingEntryIndex]?.useableAmount || 0) +
-                delta, // 수정된 값 복원
-            };
-          }
-
-          return updatedAmounts;
-        });
-
-        // `selectedRow` 상태 복원
-        setSelectedRow((prev) =>
-          prev
-            ? {
-                ...prev,
-                charges: prev.charges?.map((charge) =>
-                  charge.uuid === selectedCharge.uuid ? originalCharge : charge
-                ),
-              }
-            : null
+    if (selectedRow) {
+      if (selectedCharge) {
+        // 기존 데이터 수정 취소
+        const original = depositData.find(
+          (deposit) => deposit.uuid === selectedRow.uuid
         );
+        const originalCharge = original?.charges?.find(
+          (charge) => charge.uuid === selectedCharge.uuid
+        );
+        if (originalCharge) {
+          // 기존 값과 수정된 값의 차이를 계산
+          const delta = Object.keys(originalCharge).reduce((sum, key) => {
+            if (typeof originalCharge[key as keyof ICharge] === "number") {
+              const originalValue = originalCharge[
+                key as keyof ICharge
+              ] as number;
+              const currentValue = selectedCharge[
+                key as keyof ICharge
+              ] as number;
+
+              return sum + (currentValue - originalValue);
+            }
+            return sum;
+          }, 0);
+          // `useableAmounts` 복원
+          setUseableAmounts((prevAmounts) => {
+            const updatedAmounts = [...prevAmounts];
+            const existingEntryIndex = updatedAmounts.findIndex(
+              (entry) => entry.uuid === selectedRow.uuid
+            );
+            if (existingEntryIndex !== -1) {
+              updatedAmounts[existingEntryIndex] = {
+                ...updatedAmounts[existingEntryIndex],
+                useableAmount:
+                  (updatedAmounts[existingEntryIndex]?.useableAmount || 0) +
+                  delta, // 수정된 값 복원
+              };
+            }
+
+            return updatedAmounts;
+          });
+          // `selectedRow` 상태 복원
+          setSelectedRow((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  charges: prev.charges?.map((charge) =>
+                    charge.uuid === selectedCharge.uuid
+                      ? originalCharge
+                      : charge
+                  ),
+                }
+              : null
+          );
+        }
+        setSelectedCharge(null); // 선택 초기화
       }
 
-      setSelectedCharge(null); // 선택 초기화
-    } else if (selectedRow) {
       // 새로운 데이터 등록 취소
       const numericFieldsSum = Object.entries(newCharge)
         .filter(([key, value]) => typeof value === "number")
@@ -453,6 +449,7 @@ const Deposit: React.FC = () => {
 
         return updatedAmounts;
       });
+      setIsAddingNewChargeRow(false);
 
       // 새로운 충전 데이터 초기화
       setNewCharge({
@@ -471,6 +468,19 @@ const Deposit: React.FC = () => {
         netSales: 0,
         note: "",
       });
+    }
+  };
+
+  const handleAddNewCharge = () => {
+    setIsAddingNewChargeRow(true);
+    const EntryIndex = useableAmounts.findIndex(
+      (entry) => entry.uuid === selectedRow?.uuid
+    );
+    if (EntryIndex !== -1) {
+      if (useableAmounts[EntryIndex]?.useableAmount <= 0) {
+        alert("사용 가능 금액을 확인하세요!");
+        setIsAddingNewChargeRow(false);
+      }
     }
   };
 
@@ -1160,36 +1170,47 @@ const Deposit: React.FC = () => {
             </span>
           </h5>
         </div>
-        <div>
-          <button
-            className="btn btn-primary mr-2"
-            disabled={!selectedCharge} // selectedRow가 없으면 비활성화
-            onClick={handleChargeSaveClick}
-          >
-            저장
-          </button>
-          <button
-            className="btn btn-danger mr-2"
-            onClick={handleChargeDelete}
-            disabled={!selectedCharge}
-          >
-            삭제
-          </button>
-          <button
-            className="btn btn-success mr-2"
-            disabled={!selectedRow} // selectedRow가 없으면 비활성화
-            onClick={handleRegisterCharge}
-          >
-            등록
-          </button>
-          <button
-            className="btn btn-secondary"
-            disabled={!selectedRow} // selectedRow가 없으면 비활성화
-            onClick={handleChargeCancelClick}
-          >
-            취소
-          </button>
-        </div>
+        {selectedRow && (
+          <div>
+            {selectedCharge && (
+              <>
+                <button
+                  className="btn btn-primary mr-2"
+                  onClick={handleChargeSaveClick}
+                >
+                  저장
+                </button>
+                <button
+                  className="btn btn-danger mr-2"
+                  onClick={handleChargeDelete}
+                >
+                  삭제
+                </button>
+              </>
+            )}
+            {isAddingNewChargeRow ? (
+              <button
+                className="btn btn-success mr-2"
+                onClick={handleRegisterCharge}
+              >
+                등록
+              </button>
+            ) : (
+              <button
+                className="btn btn-success mr-2"
+                onClick={handleAddNewCharge}
+              >
+                추가
+              </button>
+            )}
+            <button
+              className="btn btn-secondary"
+              onClick={handleChargeCancelClick}
+            >
+              취소
+            </button>
+          </div>
+        )}
       </div>
       <div className="table-full-width px-0 table-responsive border-bottom pb-3">
         <table className="table">
@@ -1213,99 +1234,116 @@ const Deposit: React.FC = () => {
           </thead>
           <tbody>
             {/* 충전테이블 새 행 추가 모드 */}
-            <tr>
-              <td className="text-center">
-                <input
-                  type="checkbox"
-                  checked={selectedCharge?.uuid !== newCharge.uuid}
-                  disabled={selectedCharge?.uuid !== newCharge.uuid}
-                  onChange={() => handleChargeCheckboxChange(newCharge)}
-                />
-              </td>
-              {[
-                { field: "createdAt", value: newCharge.createdAt },
-                { field: "naver", value: newCharge.naver },
-                { field: "gfa", value: newCharge.gfa },
-                { field: "kakao", value: newCharge.kakao },
-                { field: "moment", value: newCharge.moment },
-                { field: "google", value: newCharge.google },
-                { field: "carot", value: newCharge.carot },
-                { field: "nosp", value: newCharge.nosp },
-                { field: "meta", value: newCharge.meta },
-                { field: "dable", value: newCharge.dable },
-                {
-                  field: "remitPay",
-                  value: newCharge.remitPay,
-                  isRemitPayField: true, // 송금/결제 여부 플래그
-                },
-                { field: "netSales", value: newCharge.netSales },
-                { field: "note", value: newCharge.note, isStringField: true }, // 문자열 필드 플래그 추가
-              ].map(
-                ({ field, value, isRemitPayField, isStringField }, index) => (
-                  <td key={`new-${field}-${index}`}>
-                    <input
-                      type={field === "createdAt" ? "date" : "text"} // 날짜 필드 처리
-                      className="w-100"
-                      value={
-                        field === "createdAt" && value instanceof Date
-                          ? dayjs(value).format("YYYY-MM-DD")
-                          : value?.toLocaleString() || ""
-                      }
-                      disabled={
-                        !selectedRow ||
-                        (selectedRow.rechargeableAmount ?? 0) <= 0 || // selectedRow가 없으면 비활성화
-                        (isRemitPayField &&
-                          selectedRow?.processType !== processType.REMITPAYCO &&
-                          selectedRow?.processType !== processType.REMITPAYDE) // remitPay 조건 처리
-                      }
-                      onChange={(e) => {
-                        setNewCharge((prev) => {
-                          const updatedCharge = {
-                            ...prev,
-                            [field]: isStringField
-                              ? e.target.value // 문자열 필드 처리
-                              : parseInt(e.target.value.replace(/,/g, "")) || 0,
-                          };
+            {isAddingNewChargeRow ? (
+              <tr>
+                <td className="text-center">
+                  <input
+                    type="checkbox"
+                    checked={selectedCharge?.uuid !== newCharge.uuid}
+                    disabled={selectedCharge?.uuid !== newCharge.uuid}
+                    onChange={() => handleChargeCheckboxChange(newCharge)}
+                  />
+                </td>
+                {[
+                  { field: "createdAt", value: newCharge.createdAt },
+                  { field: "naver", value: newCharge.naver },
+                  { field: "gfa", value: newCharge.gfa },
+                  { field: "kakao", value: newCharge.kakao },
+                  { field: "moment", value: newCharge.moment },
+                  { field: "google", value: newCharge.google },
+                  { field: "carot", value: newCharge.carot },
+                  { field: "nosp", value: newCharge.nosp },
+                  { field: "meta", value: newCharge.meta },
+                  { field: "dable", value: newCharge.dable },
+                  {
+                    field: "remitPay",
+                    value: newCharge.remitPay,
+                    isRemitPayField: true, // 송금/결제 여부 플래그
+                  },
+                  { field: "netSales", value: newCharge.netSales },
+                  { field: "note", value: newCharge.note, isStringField: true }, // 문자열 필드 플래그 추가
+                ].map(
+                  ({ field, value, isRemitPayField, isStringField }, index) => (
+                    <td key={`new-${field}-${index}`}>
+                      <input
+                        type={field === "createdAt" ? "date" : "text"} // 날짜 필드 처리
+                        className="w-100"
+                        value={
+                          field === "createdAt" && value instanceof Date
+                            ? dayjs(value).format("YYYY-MM-DD")
+                            : value?.toLocaleString() || ""
+                        }
+                        disabled={
+                          !selectedRow || // selectedRow가 없으면 비활성화
+                          (isRemitPayField &&
+                            selectedRow?.processType !==
+                              processType.REMITPAYCO &&
+                            selectedRow?.processType !== processType.REMITPAYDE) // remitPay 조건 처리
+                        }
+                        onChange={(e) => {
+                          setNewCharge((prev) => {
+                            const updatedCharge = {
+                              ...prev,
+                              [field]: isStringField
+                                ? e.target.value // 문자열 필드 처리
+                                : parseInt(e.target.value.replace(/,/g, "")) ||
+                                  0,
+                            };
 
-                          // 숫자 필드 합산 로직
-                          const numericFieldsSum = Object.entries(updatedCharge)
-                            .filter(([key, value]) => typeof value === "number") // 숫자 타입 필터링
-                            .reduce(
-                              (sum, [, value]) => sum + (value as number),
-                              0
-                            ); // 값 합산 (타입 단언)
+                            // 숫자 필드 합산 로직
+                            const numericFieldsSum = Object.entries(
+                              updatedCharge
+                            )
+                              .filter(
+                                ([key, value]) => typeof value === "number"
+                              ) // 숫자 타입 필터링
+                              .reduce(
+                                (sum, [, value]) => sum + (value as number),
+                                0
+                              ); // 값 합산 (타입 단언)
 
-                          // useableAmounts 업데이트 로직
-                          if (selectedRow?.uuid) {
-                            setUseableAmounts((prevAmounts) => {
-                              const updatedAmounts = [...prevAmounts];
-                              const existingEntryIndex =
-                                updatedAmounts.findIndex(
-                                  (entry) => entry.uuid === selectedRow.uuid
-                                );
+                            // useableAmounts 업데이트 로직
+                            if (selectedRow?.uuid) {
+                              setUseableAmounts((prevAmounts) => {
+                                const updatedAmounts = [...prevAmounts];
+                                const existingEntryIndex =
+                                  updatedAmounts.findIndex(
+                                    (entry) => entry.uuid === selectedRow.uuid
+                                  );
 
-                              const useableAmount =
-                                (selectedRow.rechargeableAmount || 0) -
-                                numericFieldsSum;
+                                const useableAmount =
+                                  (selectedRow.rechargeableAmount || 0) -
+                                  numericFieldsSum;
 
-                              if (existingEntryIndex !== -1) {
-                                // 기존 항목 업데이트
-                                updatedAmounts[existingEntryIndex] = {
-                                  ...updatedAmounts[existingEntryIndex],
-                                  useableAmount,
-                                };
-                              }
-                              return updatedAmounts;
-                            });
-                          }
-                          return updatedCharge; // 상태 업데이트
-                        });
-                      }}
-                    />
-                  </td>
-                )
-              )}
-            </tr>
+                                if (existingEntryIndex !== -1) {
+                                  // 기존 항목 업데이트
+                                  updatedAmounts[existingEntryIndex] = {
+                                    ...updatedAmounts[existingEntryIndex],
+                                    useableAmount,
+                                  };
+                                }
+                                return updatedAmounts;
+                              });
+                            }
+                            return updatedCharge; // 상태 업데이트
+                          });
+                        }}
+                      />
+                    </td>
+                  )
+                )}
+              </tr>
+            ) : (
+              <>
+                {!selectedRow && (
+                  <tr>
+                    <td colSpan={14} className="text-secondary text-center">
+                      리스트 내역을 선택해주세요.
+                    </td>
+                  </tr>
+                )}
+              </>
+            )}
             {/* 충전테이블 기존 행 수정 모드 */}
             {selectedRow?.charges?.map((charge, chargeIndex) => (
               <tr
