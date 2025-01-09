@@ -1,0 +1,25 @@
+.vertical-table{
+    border: 1px solid lightgrey;
+    font-size: 0.875em;
+    th,td{
+        width:400px;
+        border: 1px solid lightgrey;
+        padding: 8px;
+    }
+}
+
+.horizontal-table{
+    border: 1px solid lightgrey;
+    font-size: 0.875em;
+    th,td{
+        width:100px;
+        border: 1px solid lightgrey;
+        padding: 8px;
+    }
+    th{
+        background-color: #fff;
+    }
+    tr:nth-child(odd){
+        background-color: #f2f2f2;
+    }
+}

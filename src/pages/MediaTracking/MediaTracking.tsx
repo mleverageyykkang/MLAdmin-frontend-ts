@@ -8,6 +8,7 @@ import ICardSum from "../../common/models/cardSum/ICardSum";
 import ICard from "../../common/models/card/ICard";
 import IMediaViralSum from "../../common/models/mediaViralSum/IMediaViralSum";
 import UnmappedModal from "./UnmappedModal";
+import styles from "./MediaTracking.module.scss";
 
 interface User {
   uid: string;
@@ -69,7 +70,10 @@ const MediaTracking: React.FC = () => {
       if (user.role === "admin" || user.role === "system") {
         const marketerResponse = response.data.body;
         const marketers = marketerResponse
-          .filter((marketer: any) => marketer.departmentUuid === "3")
+          .filter(
+            (marketer: any) =>
+              marketer.departmentUuid === "3" || marketer.uid === "leverage1259"
+          )
           .sort((a: any, b: any) => a.positionUuid - b.positionUuid)
           .map((marketer: any) => ({ uid: marketer.uid, name: marketer.name }));
         setMarketerList(marketers);
@@ -285,7 +289,7 @@ const MediaTracking: React.FC = () => {
   };
 
   return (
-    <div className="container-fluid">
+    <div>
       {/* 필터 */}
       <div className="mb-3">
         <label className="mr-2">기간</label>
@@ -329,6 +333,122 @@ const MediaTracking: React.FC = () => {
         )}
       </div>
 
+      {/* 세전 및 인센티브 테이블 */}
+      <h5>결과</h5>
+      <div className="d-flex">
+        <div className="col-3 pl-0 mb-3">
+          <table className={`${styles["vertical-table"]} mb-2`}>
+            {salesResult.map((item, index) => (
+              <tbody key={index}>
+                {Object.entries(item.preTax || {}).map(([key, value]) => (
+                  <tr key={key}>
+                    <td
+                      className="w-50"
+                      style={{
+                        backgroundColor:
+                          key === "deductSum" ? "#ffc000" : "#434343",
+                        color: "#fff",
+                        fontWeight: key === "deductSum" ? "bold" : "normal",
+                      }}
+                    >
+                      {labels[key]}
+                    </td>
+                    <td className="text-right">
+                      {Number(value)?.toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            ))}
+          </table>
+          <table className={styles["vertical-table"]}>
+            {salesResult.map((item, index) => (
+              <tbody key={index}>
+                {Object.entries(item.incentiveCalculation || {}).map(
+                  ([key, value]) => (
+                    <tr key={key}>
+                      <td
+                        className="w-50"
+                        style={{
+                          backgroundColor:
+                            key === "incentive" || key === "incenctiveRate"
+                              ? "#434343"
+                              : "#38761d",
+                          color: "white",
+                          fontWeight:
+                            key === "incentive" || key === "incenctiveRate"
+                              ? "normal"
+                              : "bold",
+                        }}
+                      >
+                        {labels[key]}
+                      </td>
+                      <td className="text-right">
+                        {Number(value)?.toLocaleString()}
+                        {key === "incenctiveRate" ||
+                        key === "mentorAccProp" ||
+                        key === "mentorPayProp"
+                          ? "%"
+                          : ""}
+                      </td>
+                    </tr>
+                  )
+                )}
+              </tbody>
+            ))}
+          </table>
+        </div>
+
+        <div className="col-3">
+          <table className={`${styles["vertical-table"]} mb-2`}>
+            {salesResult.map((item, index) => (
+              <tbody key={index}>
+                {Object.entries(item.preTaxSalary || {}).map(([key, value]) => (
+                  <tr key={key}>
+                    <td
+                      className="w-50"
+                      style={{
+                        backgroundColor: "#454545",
+                        color: "white",
+                      }}
+                    >
+                      {labels[key]}
+                    </td>
+                    <td className="text-right">
+                      {Number(value)?.toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            ))}
+          </table>
+          <table className={styles["vertical-table"]}>
+            {salesResult.map((item, index) => (
+              <tbody key={index}>
+                {Object.entries(item.afterTaxIncentive || {}).map(
+                  ([key, value]) => (
+                    <tr key={key}>
+                      <td
+                        className="w-50"
+                        style={{
+                          backgroundColor: "#454545",
+                          color: "white",
+                        }}
+                      >
+                        {labels[key]}
+                      </td>
+                      <td className="text-right">
+                        {Number(value)?.toLocaleString()}
+                      </td>
+                    </tr>
+                  )
+                )}
+              </tbody>
+            ))}
+          </table>
+        </div>
+      </div>
+
       {/* 매체 테이블 */}
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h5>매체</h5>
@@ -351,7 +471,7 @@ const MediaTracking: React.FC = () => {
           />
         </div>
       </div>
-      <table className="table table-bordered table-striped">
+      <table className={`${styles["horizontal-table"]}`}>
         <thead>
           <tr className="text-center">
             <th>년도/월</th>
@@ -436,19 +556,10 @@ const MediaTracking: React.FC = () => {
       </table>
 
       {/* 바이럴 테이블 */}
-      <div className="d-flex justify-content-between align-items-center mb-3">
+      <div className="d-flex align-items-center mb-3 mt-3">
         <h5>바이럴</h5>
-        <button
-          className="btn btn-primary"
-          onClick={() => {
-            getVirals();
-            alert("바이럴 정보 불러옴");
-          }}
-        >
-          불러오기
-        </button>
       </div>
-      <table className="table table-bordered table-striped">
+      <table className={`${styles["horizontal-table"]}`}>
         <thead>
           <tr className="text-center">
             <th>년도/월</th>
@@ -502,19 +613,10 @@ const MediaTracking: React.FC = () => {
       </table>
 
       {/* 카드수수료 테이블 */}
-      <div className="d-flex justify-content-between align-items-center mb-3">
+      <div className="d-flex align-items-center mb-3 mt-3">
         <h5>카드 수수료</h5>
-        <button
-          className="btn btn-primary"
-          onClick={() => {
-            getCards();
-            alert("카드 수수료 정보 불러옴");
-          }}
-        >
-          불러오기
-        </button>
       </div>
-      <table className="table table-bordered table-striped">
+      <table className={`${styles["horizontal-table"]}`}>
         <thead>
           <tr className="text-center">
             <th>년도/월</th>
@@ -577,131 +679,6 @@ const MediaTracking: React.FC = () => {
           )}
         </tbody>
       </table>
-
-      {/* 세전 및 인센티브 테이블 */}
-      <div className="d-flex">
-        <div className="col-3 pl-0">
-          <h5 className="mt-4 mb-4">세전</h5>
-          <table className="table table-bordered">
-            {salesResult.map((item, index) => (
-              <tbody key={index}>
-                {Object.entries(item.preTax || {}).map(([key, value]) => (
-                  <tr key={key}>
-                    <td
-                      className="w-50"
-                      style={{
-                        backgroundColor:
-                          key === "deductSum" ? "#ffc000" : "#434343",
-                        color: "#fff",
-                        fontWeight: key === "deductSum" ? "bold" : "normal",
-                      }}
-                    >
-                      {labels[key]}
-                    </td>
-                    <td className="text-right">
-                      {Number(value)?.toLocaleString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            ))}
-          </table>
-        </div>
-
-        <div className="col-3">
-          <h5 className="mt-4 mb-4">인센티브 계산</h5>
-          <table className="table table-bordered">
-            {salesResult.map((item, index) => (
-              <tbody key={index}>
-                {Object.entries(item.incentiveCalculation || {}).map(
-                  ([key, value]) => (
-                    <tr key={key}>
-                      <td
-                        className="w-50"
-                        style={{
-                          backgroundColor:
-                            key === "incentive" || key === "incenctiveRate"
-                              ? "#434343"
-                              : "#38761d",
-                          color: "white",
-                          fontWeight:
-                            key === "incentive" || key === "incenctiveRate"
-                              ? "normal"
-                              : "bold",
-                        }}
-                      >
-                        {labels[key]}
-                      </td>
-                      <td className="text-right">
-                        {Number(value)?.toLocaleString()}
-                        {key === "incenctiveRate" ||
-                        key === "mentorAccProp" ||
-                        key === "mentorPayProp"
-                          ? "%"
-                          : ""}
-                      </td>
-                    </tr>
-                  )
-                )}
-              </tbody>
-            ))}
-          </table>
-        </div>
-
-        <div className="col-3">
-          <h5 className="mt-4 mb-4">세전 인센티브 합</h5>
-          <table className="table table-bordered">
-            {salesResult.map((item, index) => (
-              <tbody key={index}>
-                {Object.entries(item.preTaxSalary || {}).map(([key, value]) => (
-                  <tr key={key}>
-                    <td
-                      className="w-50"
-                      style={{
-                        backgroundColor: "#454545",
-                        color: "white",
-                      }}
-                    >
-                      {labels[key]}
-                    </td>
-                    <td className="text-right">
-                      {Number(value)?.toLocaleString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            ))}
-          </table>
-        </div>
-
-        <div className="col-3 pr-0">
-          <h5 className="mt-4 mb-4">인센티브액</h5>
-          <table className="table table-bordered">
-            {salesResult.map((item, index) => (
-              <tbody key={index}>
-                {Object.entries(item.afterTaxIncentive || {}).map(
-                  ([key, value]) => (
-                    <tr key={key}>
-                      <td
-                        className="w-50"
-                        style={{
-                          backgroundColor: "#454545",
-                          color: "white",
-                        }}
-                      >
-                        {labels[key]}
-                      </td>
-                      <td className="text-right">
-                        {Number(value)?.toLocaleString()}
-                      </td>
-                    </tr>
-                  )
-                )}
-              </tbody>
-            ))}
-          </table>
-        </div>
-      </div>
 
       {/* 미지정 데이터 모달 */}
       {/* {showModal && unmappedAccounts.length > 0 && (

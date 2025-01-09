@@ -42,7 +42,10 @@ const AccountList: React.FC = () => {
       setUserId(user.uid);
       const marketerResponse = response.data.body;
       const marketers = marketerResponse
-        .filter((marketer: any) => marketer.departmentUuid === "3")
+        .filter(
+          (marketer: any) =>
+            marketer.departmentUuid === "3" || marketer.uid === "leverage1259"
+        )
         .sort((a: any, b: any) => a.positionUuid - b.positionUuid)
         .map((marketer: any) => ({ uid: marketer.uid, name: marketer.name }));
       setMarketerList(marketers);
@@ -415,9 +418,6 @@ const AccountList: React.FC = () => {
                 value={selectedMarketer}
                 onChange={handleMarketerChange}
               >
-                <option value="system" key="system">
-                  시스템
-                </option>
                 {marketerList.map((marketer: any, index) => (
                   <option
                     key={marketer.uid}

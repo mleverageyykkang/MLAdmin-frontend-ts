@@ -155,7 +155,10 @@ const Deposit: React.FC = () => {
       if (user.role === "admin" || user.role === "system") {
         const marketerResponse = response.data.body;
         const marketers = marketerResponse
-          .filter((marketer: any) => marketer.departmentUuid === "3")
+          .filter(
+            (marketer: any) =>
+              marketer.departmentUuid === "3" || marketer.uid === "leverage1259"
+          )
           .map((maketer: any) => ({ uid: maketer.uid, name: maketer.name }));
         setMarketerList(marketers);
         if (marketerList.length >= 0 && !selectedMarketer) {
