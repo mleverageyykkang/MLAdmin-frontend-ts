@@ -55,11 +55,11 @@ function Layout({ children }: { children: React.ReactNode }) {
     <>
       {!isLoginPage ? (
         <div style={{ display: "flex" }}>
-          <div style={{ width: "13%" }}>
+          <div style={{ width: "11%" }}>
             <Sidebar routes={dashboardRoutes} />
           </div>
-          <div style={{ width: "87%" }}>
-            <div style={{ position: "fixed", width: "87%", zIndex: "9999" }}>
+          <div style={{ width: "89%" }}>
+            <div style={{ position: "fixed", width: "89%", zIndex: "9999" }}>
               <HeaderNavbar routes={dashboardRoutes} />
             </div>
             <div style={{ marginTop: "85px" }} className="p-3">

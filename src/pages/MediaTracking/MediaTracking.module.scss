@@ -1,23 +1,31 @@
-.vertical-table{
+.vertical-table, .horizontal-table{
     border: 1px solid lightgrey;
     font-size: 0.875em;
-    th,td{
-        width:400px;
+}
+
+.vertical-table{
+    td{
+        width:170px;
         border: 1px solid lightgrey;
         padding: 8px;
     }
 }
 
 .horizontal-table{
-    border: 1px solid lightgrey;
-    font-size: 0.875em;
+    table-layout: fixed;
     th,td{
-        width:100px;
+        width:150px;
         border: 1px solid lightgrey;
         padding: 8px;
+        text-align: center;
     }
     th{
         background-color: #fff;
+    }
+    td{
+        word-wrap: break-word !important; /* 내용이 넘칠 경우 줄바꿈 */
+        overflow: hidden !important; /* 넘치는 내용 숨김 */
+        text-overflow: ellipsis !important; /* 넘치는 내용 말줄임 표시 */
     }
     tr:nth-child(odd){
         background-color: #f2f2f2;

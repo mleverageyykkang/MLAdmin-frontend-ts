@@ -14,6 +14,17 @@ interface User {
   uid: string;
   role: string;
 }
+const mediaLabels: Record<string, string> = {
+  meta: "메타",
+  google: "구글",
+  carot: "당근",
+  kakao: "카카오",
+  dable: "데이블",
+  gfa: "네이버GFA",
+  nosp: "네이버NOSP",
+  moment: "모먼트",
+  naver: "네이버",
+};
 
 const years = Array.from({ length: 6 }, (_, i) => dayjs().year() - 1 + i); // 연도 범위 생성 (현재 연도 +/- 5)
 const months = Array.from({ length: 12 }, (_, i) => i + 1); // 월 범위 생성
@@ -289,7 +300,7 @@ const MediaTracking: React.FC = () => {
   };
 
   return (
-    <div>
+    <div className="ml-2">
       {/* 필터 */}
       <div className="mb-3">
         <label className="mr-2">기간</label>
@@ -347,8 +358,7 @@ const MediaTracking: React.FC = () => {
                       style={{
                         backgroundColor:
                           key === "deductSum" ? "#ffc000" : "#434343",
-                        color: "#fff",
-                        fontWeight: key === "deductSum" ? "bold" : "normal",
+                        color: "white",
                       }}
                     >
                       {labels[key]}
@@ -379,16 +389,32 @@ const MediaTracking: React.FC = () => {
                             key === "incentive" || key === "incenctiveRate"
                               ? "normal"
                               : "bold",
+                          display:
+                            value === 0 &&
+                            key !== "incentive" &&
+                            key !== "incenctiveRate"
+                              ? "none"
+                              : "",
                         }}
                       >
                         {labels[key]}
                       </td>
-                      <td className="text-right">
+                      <td
+                        className={`
+                          ${
+                            key === "incenctiveRate" ? "text-danger" : ""
+                          } text-right`}
+                        style={
+                          key !== "incentive" && key !== "incenctiveRate"
+                            ? { display: value === 0 ? "none" : "" }
+                            : undefined
+                        }
+                      >
                         {Number(value)?.toLocaleString()}
                         {key === "incenctiveRate" ||
                         key === "mentorAccProp" ||
                         key === "mentorPayProp"
-                          ? "%"
+                          ? " %"
                           : ""}
                       </td>
                     </tr>
@@ -414,7 +440,12 @@ const MediaTracking: React.FC = () => {
                     >
                       {labels[key]}
                     </td>
-                    <td className="text-right">
+                    <td
+                      className="text-right"
+                      style={{
+                        color: key === "finalIncentive" ? "orange" : "",
+                      }}
+                    >
                       {Number(value)?.toLocaleString()}
                     </td>
                   </tr>
@@ -437,7 +468,18 @@ const MediaTracking: React.FC = () => {
                       >
                         {labels[key]}
                       </td>
-                      <td className="text-right">
+                      <td
+                        className="text-right"
+                        style={{
+                          color:
+                            key === "finalAmount"
+                              ? "orange"
+                              : key === "sendAmount"
+                              ? "#24ffff"
+                              : "",
+                          fontWeight: key === "sendAmount" ? "bold" : "",
+                        }}
+                      >
                         {Number(value)?.toLocaleString()}
                       </td>
                     </tr>
@@ -454,7 +496,7 @@ const MediaTracking: React.FC = () => {
         <h5>매체</h5>
         <div className="d-flex">
           <button
-            className="btn btn-primary"
+            className="btn btn-primary mr-2"
             onClick={() => {
               selectedMediaFiles.current?.click();
             }}
@@ -534,10 +576,20 @@ const MediaTracking: React.FC = () => {
                         <td>{item.clientName || ""}</td>
                         <td>{item.clientId || ""}</td>
                         <td>{item.advCost?.toLocaleString() || 0}</td>
-                        <td>{item.commissionRate || 0} %</td>
+                        <td>
+                          {item.commissionRate
+                            ? item.commissionRate.toFixed(2)
+                            : "0.00"}{" "}
+                          %
+                        </td>
                         <td>{item.payVatExclude?.toLocaleString() || 0}</td>
                         <td>{item.payVatInclude?.toLocaleString() || 0}</td>
-                        <td>{item.paybackRate || 0} %</td>
+                        <td>
+                          {item.paybackRate
+                            ? item.paybackRate.toFixed(2)
+                            : "0.00"}{" "}
+                          %
+                        </td>
                         <td>{item.paybackAmount?.toLocaleString() || 0}</td>
                         <td>{item.total?.toLocaleString() || 0}</td>
                       </tr>
@@ -596,7 +648,12 @@ const MediaTracking: React.FC = () => {
                   <td>{item.clientName || ""}</td>
                   <td>{item.clientId || ""}</td>
                   <td>{item.advCost?.toLocaleString() || 0}</td>
-                  <td>{item.commissionRate?.toLocaleString() || 0} %</td>
+                  <td>
+                    {item.commissionRate
+                      ? item.commissionRate.toFixed(2)
+                      : "0.00"}{" "}
+                    %
+                  </td>
                   <td>{item.payVatExclude?.toLocaleString() || 0}</td>
                   <td>{item.payVatInclude?.toLocaleString() || 0}</td>
                 </tr>
@@ -661,11 +718,16 @@ const MediaTracking: React.FC = () => {
                               : "white",
                         }}
                       >
-                        {item.media}
+                        {mediaLabels[item?.media || ""]}
                       </td>
                       <td>{item.chargeVatInclude?.toLocaleString()}</td>
                       <td>{item.chargeVatExclude?.toLocaleString()}</td>
-                      <td>{item.commissionRate} %</td>
+                      <td>
+                        {item.commissionRate
+                          ? item.commissionRate.toFixed(2)
+                          : "0.00"}{" "}
+                        %
+                      </td>
                       <td>{item.payVatExclude?.toLocaleString()}</td>
                       <td>{item.payVatInclude?.toLocaleString()}</td>
                     </tr>
