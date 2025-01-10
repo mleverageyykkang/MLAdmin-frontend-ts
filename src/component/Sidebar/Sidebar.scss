@@ -42,11 +42,17 @@
   padding: 10px;
   width: 100%;
   display: block;
+  &:hover{
+    text-decoration: none;
+    color: #ffa500;
+    font-weight: bold;
+  }
 }
 
 .sidebar-link.active {
   background-color: #ffa500;
   color: #000;
+  font-weight: bold;
 }
 
 .sidebar-group ul {
@@ -62,9 +68,15 @@
 .sidebar-group li .sidebar-link {
   font-size: 13px;
   color: #bbb;
+  &:hover{
+    text-decoration: none;
+    color: #ffa500;
+    font-weight: bold;
+  }
 }
 
 .sidebar-group li .sidebar-link.active {
   background-color: transparent;
   color: #ffa500;
+  font-weight: bold;
 }

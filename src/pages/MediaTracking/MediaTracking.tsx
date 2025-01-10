@@ -346,7 +346,7 @@ const MediaTracking: React.FC = () => {
 
       {/* 세전 및 인센티브 테이블 */}
       <h5>결과</h5>
-      <div className="d-flex">
+      <div className="d-flex mt-3">
         <div className="col-3 pl-0 mb-3">
           <table className={`${styles["vertical-table"]} mb-2`}>
             {salesResult.map((item, index) => (
@@ -475,9 +475,9 @@ const MediaTracking: React.FC = () => {
                             key === "finalAmount"
                               ? "orange"
                               : key === "sendAmount"
-                              ? "#24ffff"
+                              ? "#3282F6"
                               : "",
-                          fontWeight: key === "sendAmount" ? "bold" : "",
+                          // fontWeight: key === "sendAmount" ? "bold" : "",
                         }}
                       >
                         {Number(value)?.toLocaleString()}
@@ -492,11 +492,11 @@ const MediaTracking: React.FC = () => {
       </div>
 
       {/* 매체 테이블 */}
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h5>매체</h5>
-        <div className="d-flex">
+      <div className="d-flex align-items-center mb-3 mt-3">
+        <h5>매체 + 바이럴</h5>
+        <div className="d-flex ml-3">
           <button
-            className="btn btn-primary mr-2"
+            className={styles["btn"]}
             onClick={() => {
               selectedMediaFiles.current?.click();
             }}
@@ -608,24 +608,13 @@ const MediaTracking: React.FC = () => {
       </table>
 
       {/* 바이럴 테이블 */}
-      <div className="d-flex align-items-center mb-3 mt-3">
-        <h5>바이럴</h5>
-      </div>
-      <table className={`${styles["horizontal-table"]}`}>
-        <thead>
-          <tr className="text-center">
-            <th>년도/월</th>
-            <th>매체</th>
-            <th>광고주명</th>
-            <th>광고주ID</th>
-            <th>광고비 (VAT-)</th>
-            <th>수수료율</th>
-            <th>지급수수료(VAT-)</th>
-            <th>지급수수료(VAT+)</th>
-          </tr>
-        </thead>
+      <table
+        style={{ backgroundColor: "transparent" }}
+        className={`${styles["horizontal-table"]} no-first-row-style mt-3`}
+      >
         <tbody>
-          {Array.isArray(viralData) && viralData.length > 0 ? (
+          {Array.isArray(viralData) &&
+            viralData.length > 0 &&
             viralData.map((item) => (
               <>
                 <tr className="text-center">
@@ -658,14 +647,7 @@ const MediaTracking: React.FC = () => {
                   <td>{item.payVatInclude?.toLocaleString() || 0}</td>
                 </tr>
               </>
-            ))
-          ) : (
-            <tr>
-              <td colSpan={8} className="text-center text-secondary">
-                데이터가 없습니다.
-              </td>
-            </tr>
-          )}
+            ))}
         </tbody>
       </table>
 

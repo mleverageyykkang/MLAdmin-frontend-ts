@@ -9,23 +9,69 @@
         border: 1px solid lightgrey;
         padding: 8px;
     }
+    td:nth-child(2){
+        background-color: #000;
+        color:#fff;
+    }
 }
+h5{
+    margin: 0;
+}
+.btn {
+    background-color: #007bff;
+    border: 1px solid #007bff;
+    height: 27px;
+    vertical-align: center;
+    color: #fff;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    &:hover {
+      background-color: #0056b3;
+    }
+}
+
 
 .horizontal-table{
     table-layout: fixed;
     th,td{
         width:150px;
+        border: 2px solid lightgrey;
+        padding: 8px;
+        text-align: center;
+        color:white;
+        word-wrap: break-word !important; /* 내용이 넘칠 경우 줄바꿈 */
+        overflow: hidden !important; /* 넘치는 내용 숨김 */
+        text-overflow: ellipsis !important; /* 넘치는 내용 말줄임 표시 */
+    }
+    th:nth-child(2),td:nth-child(2),
+    th:nth-child(1),td:nth-child(1){
+        width:115px;
+        border: 1px solid lightgrey;
+        padding: 8px;
+        text-align: center;
+    }
+    th:nth-child(3),td:nth-child(3){
+        width:200px;
         border: 1px solid lightgrey;
         padding: 8px;
         text-align: center;
     }
     th{
-        background-color: #fff;
+        background-color: #434343;
     }
     td{
-        word-wrap: break-word !important; /* 내용이 넘칠 경우 줄바꿈 */
-        overflow: hidden !important; /* 넘치는 내용 숨김 */
-        text-overflow: ellipsis !important; /* 넘치는 내용 말줄임 표시 */
+        background-color: black;
+    }
+    
+    td:first-child{
+        background-color: #434343;
+    }
+    tr:first-child > td{
+        background-color: #666666; /* 기본 스타일 */
+    }
+    td:nth-child(11){
+        color:#00ff00;
     }
     tr:nth-child(odd){
         background-color: #f2f2f2;
