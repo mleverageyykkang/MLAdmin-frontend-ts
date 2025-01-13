@@ -88,6 +88,7 @@ const Deposit: React.FC = () => {
     { uuid: string; useableAmount: number }[]
   >([]);
   const [isAddingNewChargeRow, setIsAddingNewChargeRow] = useState(false); // 새로운 행 추가 상태
+  const [copyRow, setCopyRow] = useState<Partial<IDeposit> | null>(null);
 
   const [columns, setColumns] = useState([
     { id: "progressDate", label: "진행일자", accessor: "progressDate" },
@@ -182,7 +183,7 @@ const Deposit: React.FC = () => {
       }));
       setUseableAmounts(filtered);
       if (response.status === 203) console.error(response.data.body);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to get DepositData: ", error);
     }
   };
@@ -793,6 +794,23 @@ const Deposit: React.FC = () => {
     setSelectedView(e.target.value);
   };
 
+  const handleCopy = () => {
+    if (!selectedRow) {
+      alert("복사할 항목을 선택해주세요.");
+      return;
+    }
+    // 선택된 데이터를 복사하여 `copyRow`에 저장
+    const newCopyRow = {
+      ...selectedRow,
+      uuid: `temp-${Date.now()}`, // 새 UUID 생성
+    };
+
+    setCopyRow(newCopyRow);
+    alert("데이터가 복사되었습니다.");
+    setSelectedRow(null);
+    console.log(copyRow);
+  };
+
   return (
     <div>
       {/* 필터 */}
@@ -867,6 +885,42 @@ const Deposit: React.FC = () => {
             onClick={handleDepositCancelClick}
           >
             취소
+          </button>
+          <button
+            className="btn btn-primary ml-2"
+            onClick={() => {
+              if (!copyRow) {
+                alert("붙여넣을 데이터가 없습니다.");
+                return;
+              }
+
+              // copyRow에서 특정 필드만 선택하여 setNewDeposit에 전달
+              const selectedFields = {
+                progressDate: copyRow.progressDate
+                  ? new Date(copyRow.progressDate)
+                  : new Date(),
+                company: copyRow.company || "",
+                depositor: copyRow.depositor || "",
+                depositDate: copyRow.depositDate
+                  ? new Date(copyRow.depositDate)
+                  : new Date(),
+                taxInvoice: copyRow.taxInvoice || "",
+                depositAmount: copyRow.depositAmount || 0,
+                deductAmount: copyRow.deductAmount || 0,
+                paymentType: (copyRow.paymentType as paymentType) || "",
+                processType: (copyRow.processType as processType) || "",
+                depositDueDate: copyRow.depositDueDate
+                  ? new Date(copyRow.depositDueDate)
+                  : new Date(),
+                rechargeableAmount: copyRow.rechargeableAmount || 0,
+              };
+
+              alert(JSON.stringify(selectedFields));
+              setNewDeposit(selectedFields);
+              alert("붙여넣기가 완료되었습니다.");
+            }}
+          >
+            paste
           </button>
         </div>
       </div>
@@ -1400,7 +1454,7 @@ const Deposit: React.FC = () => {
             삭제
           </button>
           <select
-            className="h-100"
+            className="h-100 mr-2"
             value={selectedView}
             onChange={handleViewChange}
           >
@@ -1410,6 +1464,15 @@ const Deposit: React.FC = () => {
             <option value="complete">완료</option>
             <option value="refund">환불</option>
           </select>
+          <button
+            className="btn btn-primary"
+            onClick={() => {
+              alert(selectedRow?.uuid);
+              handleCopy();
+            }}
+          >
+            복사
+          </button>
         </div>
       </div>
       <div

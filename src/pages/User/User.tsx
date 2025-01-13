@@ -4,8 +4,9 @@ import IUser, { roleType } from "../../common/models/user/IUser";
 import IDepartment from "../../common/models/department/IDepartment";
 import IPosition from "../../common/models/position/IPosition";
 import Pagination from "component/Pagination";
-import "./User.module.scss";
+import styles from "./User.module.scss";
 import qs from "qs";
+import dayjs from "dayjs";
 
 const User: React.FC = () => {
   const [data, setData] = useState<IUser[]>([]);
@@ -21,6 +22,46 @@ const User: React.FC = () => {
   const [buttonState, setButtonState] = useState<"default" | "register">(
     "default"
   );
+  const [draggedColumnIndex, setDraggedColumnIndex] = useState<number | null>(
+    null
+  );
+  const [columns, setColumns] = useState<
+    Array<{ id: string; label: string; accessor: keyof IUser }>
+  >([
+    { id: "uid", label: "아이디", accessor: "uid" },
+    { id: "name", label: "이름", accessor: "name" },
+    { id: "code", label: "코드", accessor: "code" },
+    { id: "birthday", label: "생년월일", accessor: "birthday" },
+    { id: "positionUuid", label: "직책", accessor: "positionUuid" },
+    { id: "departmentUuid", label: "부서", accessor: "departmentUuid" },
+    { id: "phone", label: "연락처", accessor: "phone" },
+    { id: "directPhone", label: "직통번호", accessor: "directPhone" },
+    { id: "companyEmail", label: "회사 이메일", accessor: "companyEmail" },
+    { id: "personalEmail", label: "개인 이메일", accessor: "personalEmail" },
+    { id: "mbti", label: "MBTI", accessor: "mbti" },
+  ]);
+
+  // HTML5 드래그앤드롭 방식 : Handle drag start
+  const handleDragStart = (index: number) => {
+    setDraggedColumnIndex(index);
+  };
+
+  // HTML5 드래그앤드롭 방식 : Handle drag over
+  const handleDragOver = (e: React.DragEvent<HTMLTableCellElement>) => {
+    e.preventDefault(); // Prevent default behavior to allow drop
+  };
+
+  // HTML5 드래그앤드롭 방식 : Handle drop
+  const handleDrop = (index: number) => {
+    if (draggedColumnIndex === null || draggedColumnIndex === index) return;
+
+    const newColumns = [...columns];
+    const [draggedColumn] = newColumns.splice(draggedColumnIndex, 1);
+    newColumns.splice(index, 0, draggedColumn);
+
+    setColumns(newColumns);
+    setDraggedColumnIndex(null);
+  };
 
   //user 데이터 긁어오기
   useEffect(() => {
@@ -86,12 +127,15 @@ const User: React.FC = () => {
         );
         // userId를 포함한 Fields 만들기기
         const customFields = updatedFields as Record<string, any>;
-        customFields.userId = editedRow.uid;
+        if (originalRow.uid !== editedRow.uid) {
+          customFields.userId = editedRow.uid;
+        }
         // 수정사항이 없을 때
         if (Object.keys(customFields).length === 0) {
           alert("수정된 내용이 없습니다.");
           return;
         }
+        console.log("customFields:", customFields);
         // 수정사항 보내기
         const response = await axios.put(`/user/${editingRow}`, customFields, {
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -111,6 +155,7 @@ const User: React.FC = () => {
           setButtonState("default");
           setEditingRow(null);
           setEditedRow({});
+          setSelectedRow(null);
         }
       } catch (error: any) {
         console.error("저장 실패:", error);
@@ -184,7 +229,34 @@ const User: React.FC = () => {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
     field: keyof IUser
   ) => {
-    setEditedRow((prev) => ({ ...prev, [field]: e.target.value }));
+    const value =
+      field === "phone"
+        ? e.target.value
+            .replace(/[^0-9]/g, "")
+            .replace(/^(\d{0,3})(\d{0,4})(\d{0,4})$/g, "$1-$2-$3")
+            .replace(/(\-{1,2})$/g, "")
+        : field === "directPhone"
+        ? e.target.value
+            .replace(/[^0-9]/g, "")
+            .replace(/^(\d{0,2})(\d{0,4})(\d{0,4})$/g, `$1-$2-$3`)
+            .replace(/(\-{1,2})$/g, "")
+        : e.target.value;
+    setEditedRow((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handlePhoneChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    field: keyof IUser
+  ) => {
+    const value = e.target.value
+      .replace(/[^0-9]/g, "")
+      .replace(/^(\d{0,3})(\d{0,4})(\d{0,4})$/g, "$1-$2-$3")
+      .replace(/(\-{1,2})$/g, "");
+
+    setEditedRow((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   };
 
   // 새로운 행 추가
@@ -265,24 +337,27 @@ const User: React.FC = () => {
   return (
     <div className="container-fluid">
       {/* 테이블 위의 버튼 */}
-      <div className="d-flex justify-content-end mb-3">
+      <div className={`${styles["filter-container"]} mb-3`}>
         {editingRow || selectedRow ? (
           <>
             {editingRow && buttonState !== "register" && selectedRow && (
               <>
                 <button
-                  className="btn btn-primary mr-2"
+                  className={`${styles["btn-blue"]} mr-2`}
                   onClick={handleSaveClick}
                 >
                   저장
                 </button>
                 <button
-                  className="btn btn-secondary mr-2"
+                  className={`${styles["btn-cancel"]} mr-2`}
                   onClick={handleCancelClick}
                 >
                   취소
                 </button>
-                <button className="btn btn-danger" onClick={handleDeleteClick}>
+                <button
+                  className={`${styles["btn-red"]} mr-2`}
+                  onClick={handleDeleteClick}
+                >
                   삭제
                 </button>
               </>
@@ -291,19 +366,22 @@ const User: React.FC = () => {
         ) : null}
         {/* 등록 버튼 */}
         {buttonState === "default" ? (
-          <button className="btn btn-success mx-2" onClick={handleAddNew}>
+          <button
+            className={`${styles["btn-green"]} mr-2`}
+            onClick={handleAddNew}
+          >
             추가
           </button>
         ) : (
           <>
             <button
-              className="btn btn-success mx-2"
+              className={`${styles["btn-green"]} mr-2`}
               onClick={handleRegisterClick}
             >
               등록
             </button>
             <button
-              className="btn btn-secondary mr-2"
+              className={`${styles["btn-cancel"]} mr-2`}
               onClick={handleCancelClick}
             >
               취소
@@ -316,36 +394,27 @@ const User: React.FC = () => {
         </select>
       </div>
 
-      <div className="table-full-width px-0 table-responsive">
-        <table className="table table-bordered">
+      <div>
+        <table className={styles["user-table"]}>
           <thead>
-            <tr className="text-nowrap text-center">
+            <tr>
               <th>선택</th>
-              <th>아이디</th>
-              <th>이름</th>
-              <th>코드</th>
-              <th>생년월일</th>
-              <th>직책</th>
-              <th>부서</th>
-              <th>연락처</th>
-              <th>직통번호</th>
-              <th>회사 이메일</th>
-              <th>개인 이메일</th>
-              <th>MBTI</th>
+              {columns.map((col, index) => (
+                <th
+                  key={col.id}
+                  draggable
+                  onDragStart={() => handleDragStart(index)}
+                  onDragOver={handleDragOver}
+                  onDrop={() => handleDrop(index)}
+                >
+                  {col.label}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {currenPageData.map((row) => (
-              <tr
-                key={row.uid}
-                style={{
-                  backgroundColor:
-                    editingRow === row.uid || selectedRow === row.uid
-                      ? "#f0f8ff"
-                      : "transparent",
-                }}
-                className="text-nowrap text-center"
-              >
+            {currenPageData.map((row: any) => (
+              <tr key={row.uid}>
                 <td>
                   <input
                     type="checkbox"
@@ -366,118 +435,83 @@ const User: React.FC = () => {
                     }}
                   />
                 </td>
-                {editingRow === row.uid ? (
-                  <>
-                    <td>
-                      <input
-                        type="text"
-                        value={editedRow.uid || ""}
-                        onChange={(e) => handleChange(e, "uid")}
-                      />
+                {/* 동적으로 columns 순서에 따라 열 생성 */}
+                {columns.map((col) =>
+                  editingRow === row.uid ? (
+                    <td key={col.id}>
+                      {col.id === "positionUuid" ? (
+                        <select
+                          value={editedRow.positionUuid || ""}
+                          onChange={(e) => handleChange(e, "positionUuid")}
+                        >
+                          <option value="">직책 선택</option>
+                          {positionSelect.map((pos) => (
+                            <option key={pos.uuid} value={pos.uuid}>
+                              {pos.name}
+                            </option>
+                          ))}
+                        </select>
+                      ) : col.id === "departmentUuid" ? (
+                        <select
+                          value={editedRow.departmentUuid || ""}
+                          onChange={(e) => handleChange(e, "departmentUuid")}
+                        >
+                          <option value="">부서 선택</option>
+                          {departmentSelect.map((dpt) => (
+                            <option key={dpt.uuid} value={dpt.uuid}>
+                              {dpt.name}
+                            </option>
+                          ))}
+                        </select>
+                      ) : col.id === "birthday" ? (
+                        <input
+                          type="date"
+                          value={
+                            editedRow.birthday
+                              ? dayjs(editedRow.birthday).format("YYYY-MM-DD")
+                              : ""
+                          }
+                          onChange={(e) => handleChange(e, "birthday")}
+                        />
+                      ) : col.id !== "code" ? (
+                        <input
+                          type="text"
+                          value={
+                            (
+                              editedRow[col.accessor] as string | number
+                            )?.toLocaleString() || "" // 그대로 사용
+                          }
+                          onChange={(e) => handleChange(e, col.accessor)}
+                        />
+                      ) : (
+                        row[col.accessor]
+                      )}
                     </td>
+                  ) : (
                     <td>
-                      <input
-                        type="text"
-                        value={editedRow.name || ""}
-                        onChange={(e) => handleChange(e, "name")}
-                      />
+                      {col.id === "positionUuid"
+                        ? positionSelect.find(
+                            (pos) => pos.uuid === row.positionUuid
+                          )?.name
+                        : col.id === "departmentUuid"
+                        ? departmentSelect.find(
+                            (dpt) => dpt.uuid === row.departmentUuid
+                          )?.name
+                        : col.id === "phone"
+                        ? row[col.accessor]?.length === 11 // 휴대폰 번호 길이 확인
+                          ? `${row[col.accessor].slice(0, 3)}-${row[
+                              col.accessor
+                            ].slice(3, 7)}-${row[col.accessor].slice(7)}`
+                          : row[col.accessor]
+                        : col.id === "directPhone"
+                        ? row[col.accessor]?.length === 10 // 휴대폰 번호 길이 확인
+                          ? `${row[col.accessor].slice(0, 2)}-${row[
+                              col.accessor
+                            ].slice(2, 6)}-${row[col.accessor].slice(6)}`
+                          : row[col.accessor]
+                        : row[col.accessor]?.toLocaleString("")}
                     </td>
-                    <td>{row.code}</td>
-                    <td>
-                      <input
-                        type="text"
-                        value={editedRow.birthday || ""}
-                        onChange={(e) => handleChange(e, "birthday")}
-                      />
-                    </td>
-                    <td>
-                      <select
-                        value={editedRow.positionUuid || ""}
-                        onChange={(e) => handleChange(e, "positionUuid")}
-                      >
-                        <option value="">직책 선택</option>
-                        {positionSelect.map((pos) => (
-                          <option key={pos.uuid} value={pos.uuid}>
-                            {pos.name}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td>
-                      <select
-                        value={editedRow.departmentUuid || ""}
-                        onChange={(e) => handleChange(e, "departmentUuid")}
-                      >
-                        <option value="">부서 선택</option>
-                        {departmentSelect.map((dpt) => (
-                          <option key={dpt.uuid} value={dpt.uuid}>
-                            {dpt.name}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td>
-                      <input
-                        type="text"
-                        value={editedRow.phone || ""}
-                        onChange={(e) => handleChange(e, "phone")}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="text"
-                        value={editedRow.directPhone || ""}
-                        onChange={(e) => handleChange(e, "directPhone")}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="text"
-                        value={editedRow.companyEmail || ""}
-                        onChange={(e) => handleChange(e, "companyEmail")}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="text"
-                        value={editedRow.personalEmail || ""}
-                        onChange={(e) => handleChange(e, "personalEmail")}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="text"
-                        value={editedRow.mbti || ""}
-                        onChange={(e) => handleChange(e, "mbti")}
-                      />
-                    </td>
-                  </>
-                ) : (
-                  <>
-                    <td>{row.uid}</td>
-                    <td>{row.name}</td>
-                    <td>{row.code}</td>
-                    <td>{row.birthday}</td>
-                    <td>
-                      {
-                        positionSelect.find(
-                          (pos) => pos.uuid === row.positionUuid
-                        )?.name
-                      }
-                    </td>
-                    <td>
-                      {
-                        departmentSelect.find(
-                          (dpt) => dpt.uuid === row.departmentUuid
-                        )?.name
-                      }
-                    </td>
-                    <td>{row.phone}</td>
-                    <td>{row.directPhone}</td>
-                    <td>{row.companyEmail}</td>
-                    <td>{row.personalEmail}</td>
-                    <td>{row.mbti}</td>
-                  </>
+                  )
                 )}
               </tr>
             ))}
