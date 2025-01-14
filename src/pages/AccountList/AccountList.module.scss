@@ -1,8 +1,9 @@
 .accountTable{
   table {
     border-collapse: separate; /* 테두리가 겹치지 않도록 설정 */
-    border-spacing: 0; /* 셀 간의 간격 제거 */
-    width: 100%; /* 테이블 너비 고정 */
+    border-spacing: 0; 
+    width: 100%; 
+    font-size: .875em;
     td[rowSpan] {
       vertical-align: middle;
       text-align: center;
@@ -16,37 +17,33 @@
     th{
       position:sticky !important;
       top: 0;
-      background-color: white; /* 고정된 열의 배경색 */
-      z-index: 3; /* 고정 열이 다른 요소 위로 올라오도록 설정 */
+      background-color: white; 
+      z-index: 3; 
     }
     tbody>tr:first-child{
       position:sticky !important;
-      top: 51px;
-      background-color: white; /* 고정된 열의 배경색 */
-      z-index: 3; /* 고정 열이 다른 요소 위로 올라오도록 설정 */
-      will-change: transform;
+      top: 48px;
+      background-color: white;
+      z-index: 3; 
     }
     tbody>tr:nth-child(2){
       position :sticky;
-      top: 101px;
-      background-color: white; /* 고정된 열의 배경색 */
-      z-index: 2; /* 고정 열이 다른 요소 위로 올라오도록 설정 */
-      will-change: transform;
+      top: 95px;
+      background-color: white; 
+      z-index: 2; 
     }
     th:first-child,
     td[rowSpan]:first-child{
       position: sticky;
       left: 0;
-      background-color: white; /* 고정된 열의 배경색 */
+      background-color: white;
       z-index: 5; 
-      will-change: transform;
     }
     td:has(input[type="checkbox"]):first-child{
       position: sticky;
       left: 0;
-      background-color: white; /* 고정된 열의 배경색 */
+      background-color: white;
       z-index: 1; 
-      will-change: transform;
     }
   }
 

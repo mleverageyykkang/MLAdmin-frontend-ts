@@ -431,3 +431,100 @@
                            onChange={(e) => handleChange(e, "mentor")}
                          />
                        </td>
+
+
+{field === "paymentType" ? (
+                      <select
+                        className="w-100"
+                        value={value?.toLocaleString("") || ""}
+                        onChange={(e) =>
+                          handleInputChange(
+                            field as keyof IDeposit,
+                            e.target.value
+                          )
+                        }
+                      >
+                        <option value="">선택</option>
+                        <option value={paymentType.CARD}>카드</option>
+                        <option value={paymentType.TRANSFER}>계좌이체</option>
+                      </select>
+                    ) : field === "processType" ? (
+                      <select
+                        className="w-100"
+                        value={value?.toLocaleString("") || ""}
+                        onChange={(e) =>
+                          handleInputChange(
+                            field as keyof IDeposit,
+                            e.target.value
+                          )
+                        }
+                      >
+                        <option value="">선택</option>
+                        <option value={processType.DEFAULT}>기본</option>
+                        <option value={processType.PRECHARGE}>선충전</option>
+                        <option value={processType.DEDUCT}>차감</option>
+                        <option value={processType.REMITPAYCO}>
+                          송금/결제(회사)
+                        </option>
+                        <option value={processType.REMITPAYDE}>
+                          송금/결제(차감)
+                        </option>
+                      </select>
+                    ) : field === "deductAmount" ? (
+                      <input
+                        type="number"
+                        className="w-100"
+                        value={value?.toLocaleString("") || 0}
+                        disabled={
+                          newDeposit.processType !== processType.DEDUCT &&
+                          newDeposit.processType !== processType.REMITPAYDE
+                        } // 조건부 비활성화
+                        onChange={(e) =>
+                          handleInputChange(
+                            field as keyof IDeposit,
+                            parseInt(e.target.value.replace(/,/g, "")) || 0
+                          )
+                        }
+                      />
+                    ) : field === "depositDueDate" ? (
+                      <input
+                        type="date"
+                        className="w-100 text-center"
+                        value={
+                          value instanceof Date
+                            ? dayjs(value).format("YYYY-MM-DD")
+                            : value || ""
+                        }
+                        disabled={
+                          newDeposit.processType !== processType.PRECHARGE
+                        } // 조건부 비활성화
+                        onChange={(e) =>
+                          handleInputChange(
+                            field as keyof IDeposit,
+                            new Date(e.target.value)
+                          )
+                        }
+                      />
+                    ) : (
+                      <input
+                        type={
+                          field === "progressDate" || field === "depositDate"
+                            ? "date"
+                            : "text"
+                        }
+                        className="w-100"
+                        value={
+                          value instanceof Date
+                            ? dayjs(value).format("YYYY-MM-DD")
+                            : value?.toLocaleString() || ""
+                        }
+                        onChange={(e) =>
+                          handleInputChange(
+                            field as keyof IDeposit,
+                            field === "depositAmount"
+                              ? parseInt(e.target.value.replace(/,/g, "")) || 0
+                              : e.target.value
+                          )
+                        }
+                      />
+                    )}

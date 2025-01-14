@@ -226,9 +226,9 @@ const Deposit: React.FC = () => {
       setIsSaveDisabled(true);
       return;
     }
-    const originalData = depositData.find(
-      (deposit) => deposit.uuid === selectedRow.uuid
-    );
+    const originalData = Array.isArray(depositData)
+      ? depositData.find((deposit) => deposit.uuid === selectedRow.uuid)
+      : null;
     if (originalData) {
       const isChanged =
         JSON.stringify(originalData) !== JSON.stringify(selectedRow);
@@ -362,6 +362,7 @@ const Deposit: React.FC = () => {
         depositor: "",
         depositDate: new Date(),
         taxInvoice: "",
+        deductAmount: 0,
         depositAmount: 0,
         paymentType: "" as paymentType,
         processType: "" as processType,
@@ -375,9 +376,9 @@ const Deposit: React.FC = () => {
     if (selectedRow) {
       if (selectedCharge) {
         // 기존 데이터 수정 취소
-        const original = depositData.find(
-          (deposit) => deposit.uuid === selectedRow.uuid
-        );
+        const original = Array.isArray(depositData)
+          ? depositData.find((deposit) => deposit.uuid === selectedRow.uuid)
+          : null;
         const originalCharge = original?.charges?.find(
           (charge) => charge.uuid === selectedCharge.uuid
         );
@@ -689,9 +690,9 @@ const Deposit: React.FC = () => {
     if (window.confirm("수정한 충전 정보를 저장하시겠습니까?")) {
       try {
         // 기존 값 찾기
-        const original = depositData.find(
-          (deposit) => deposit.uuid === selectedRow?.uuid
-        );
+        const original = Array.isArray(depositData)
+          ? depositData.find((deposit) => deposit.uuid === selectedRow?.uuid)
+          : null;
         const originalCharge: any = original?.charges?.find(
           (charge) => charge.uuid === selectedCharge.uuid
         );
@@ -811,6 +812,37 @@ const Deposit: React.FC = () => {
     console.log(copyRow);
   };
 
+  const handlePaste = () => {
+    if (!copyRow) {
+      alert("붙여넣을 데이터가 없습니다.");
+      return;
+    }
+
+    // copyRow에서 특정 필드만 선택하여 setNewDeposit에 전달
+    const selectedFields = {
+      progressDate: copyRow.progressDate
+        ? new Date(copyRow.progressDate)
+        : new Date(),
+      company: copyRow.company || "",
+      depositor: copyRow.depositor || "",
+      depositDate: copyRow.depositDate
+        ? new Date(copyRow.depositDate)
+        : new Date(),
+      taxInvoice: copyRow.taxInvoice || "",
+      depositAmount: copyRow.depositAmount || 0,
+      deductAmount: copyRow.deductAmount || 0,
+      paymentType: (copyRow.paymentType as paymentType) || "",
+      processType: (copyRow.processType as processType) || "",
+      depositDueDate: copyRow.depositDueDate
+        ? new Date(copyRow.depositDueDate)
+        : undefined,
+      rechargeableAmount: copyRow.rechargeableAmount || 0,
+    };
+
+    setNewDeposit(selectedFields);
+    alert("붙여넣기가 완료되었습니다.");
+  };
+
   return (
     <div>
       {/* 필터 */}
@@ -888,44 +920,14 @@ const Deposit: React.FC = () => {
           </button>
           <button
             className="btn btn-primary ml-2"
-            onClick={() => {
-              if (!copyRow) {
-                alert("붙여넣을 데이터가 없습니다.");
-                return;
-              }
-
-              // copyRow에서 특정 필드만 선택하여 setNewDeposit에 전달
-              const selectedFields = {
-                progressDate: copyRow.progressDate
-                  ? new Date(copyRow.progressDate)
-                  : new Date(),
-                company: copyRow.company || "",
-                depositor: copyRow.depositor || "",
-                depositDate: copyRow.depositDate
-                  ? new Date(copyRow.depositDate)
-                  : new Date(),
-                taxInvoice: copyRow.taxInvoice || "",
-                depositAmount: copyRow.depositAmount || 0,
-                deductAmount: copyRow.deductAmount || 0,
-                paymentType: (copyRow.paymentType as paymentType) || "",
-                processType: (copyRow.processType as processType) || "",
-                depositDueDate: copyRow.depositDueDate
-                  ? new Date(copyRow.depositDueDate)
-                  : new Date(),
-                rechargeableAmount: copyRow.rechargeableAmount || 0,
-              };
-
-              alert(JSON.stringify(selectedFields));
-              setNewDeposit(selectedFields);
-              alert("붙여넣기가 완료되었습니다.");
-            }}
+            onClick={() => handlePaste()}
           >
-            paste
+            붙여넣기
           </button>
         </div>
       </div>
       <div className="table-full-width px-0 table-responsive">
-        <table className="table">
+        <table className="table" style={{ fontSize: ".875em" }}>
           <thead>
             <tr className="text-nowrap text-center">
               <th>진행일자</th>
@@ -941,237 +943,175 @@ const Deposit: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {selectedRow ? (
-              // 수정 모드
-              <tr>
-                {[
-                  { field: "progressDate", value: selectedRow.progressDate },
-                  { field: "company", value: selectedRow.company },
-                  { field: "depositor", value: selectedRow.depositor },
-                  { field: "depositDate", value: selectedRow.depositDate },
-                  { field: "taxInvoice", value: selectedRow.taxInvoice },
-                  { field: "depositAmount", value: selectedRow.depositAmount },
-                  { field: "deductAmount", value: selectedRow.deductAmount },
-                  { field: "paymentType", value: selectedRow.paymentType },
-                  { field: "processType", value: selectedRow.processType },
-                  {
-                    field: "depositDueDate",
-                    value: selectedRow.depositDueDate,
-                  },
-                ].map(({ field, value }, index) => (
-                  <td key={index}>
-                    {field === "paymentType" ? (
-                      <select
-                        className="w-100"
-                        value={value?.toLocaleString("") || ""}
-                        onChange={(e) =>
-                          handleInputChange(
-                            field as keyof IDeposit,
-                            e.target.value
-                          )
-                        }
-                      >
-                        <option value="">선택</option>
-                        <option value="CARD">카드</option>
-                        <option value="TRANSFER">계좌이체</option>
-                      </select>
-                    ) : field === "processType" ? (
-                      <select
-                        className="w-100"
-                        value={value?.toLocaleString("") || ""}
-                        onChange={(e) =>
-                          handleInputChange(
-                            field as keyof IDeposit,
-                            e.target.value
-                          )
-                        }
-                      >
-                        <option value="">선택</option>
-                        <option value={processType.DEFAULT}>기본</option>
-                        <option value={processType.PRECHARGE}>선충전</option>
-                        <option value={processType.DEDUCT}>차감</option>
-                        <option value={processType.REMITPAYCO}>
-                          송금/결제(회사)
-                        </option>
-                        <option value={processType.REMITPAYDE}>
-                          송금/결제(차감)
-                        </option>
-                      </select>
-                    ) : field === "deductAmount" ? (
-                      <input
-                        type="text"
-                        className="w-100"
-                        value={Number(value) || ""}
-                        disabled={
-                          selectedRow.processType !== processType.DEDUCT
-                        } // 조건부 비활성화
-                        onChange={(e) =>
-                          handleInputChange(
-                            field as keyof IDeposit,
-                            parseInt(e.target.value) || 0
-                          )
-                        }
-                      />
-                    ) : field === "depositDueDate" ? (
-                      <input
-                        type="date"
-                        className="w-100"
-                        value={
-                          value instanceof Date
-                            ? dayjs(value).format("YYYY-MM-DD")
-                            : value || ""
-                        }
-                        disabled={
-                          selectedRow.processType !== processType.PRECHARGE
-                        } // 조건부 비활성화
-                        onChange={(e) =>
-                          handleInputChange(
-                            field as keyof IDeposit,
-                            new Date(e.target.value)
-                          )
-                        }
-                      />
-                    ) : (
-                      <input
-                        type={
-                          field === "progressDate" || field === "depositDate"
-                            ? "date"
-                            : "text"
-                        }
-                        className="w-100"
-                        value={
-                          field === "progressDate" || field === "depositDate"
-                            ? dayjs(value).format("YYYY-MM-DD")
-                            : value?.toLocaleString("") || ""
-                        }
-                        onChange={(e) =>
-                          handleInputChange(
-                            field as keyof IDeposit,
-                            field === "depositAmount"
-                              ? parseInt(e.target.value.replace(/,/g, "")) || 0
-                              : field === "progressDate" ||
-                                field === "depositDate"
-                              ? new Date(e.target.value)
-                              : e.target.value
-                          )
-                        }
-                      />
-                    )}
-                  </td>
-                ))}
-              </tr>
-            ) : (
-              // 새 행 추가 모드
-              <tr>
-                {[
-                  { field: "progressDate", value: newDeposit.progressDate },
-                  { field: "company", value: newDeposit.company },
-                  { field: "depositor", value: newDeposit.depositor },
-                  { field: "depositDate", value: newDeposit.depositDate },
-                  { field: "taxInvoice", value: newDeposit.taxInvoice },
-                  { field: "depositAmount", value: newDeposit.depositAmount },
-                  { field: "deductAmount", value: newDeposit.deductAmount },
-                  { field: "paymentType", value: newDeposit.paymentType },
-                  { field: "processType", value: newDeposit.processType },
-                  { field: "depositDueDate", value: newDeposit.depositDueDate },
-                ].map(({ field, value }, index) => (
-                  <td key={index}>
-                    {field === "paymentType" ? (
-                      <select
-                        className="w-100"
-                        value={value?.toLocaleString("") || ""}
-                        onChange={(e) =>
-                          handleInputChange(
-                            field as keyof IDeposit,
-                            e.target.value
-                          )
-                        }
-                      >
-                        <option value="">선택</option>
-                        <option value="CARD">카드</option>
-                        <option value="TRANSFER">계좌이체</option>
-                      </select>
-                    ) : field === "processType" ? (
-                      <select
-                        className="w-100"
-                        value={value?.toLocaleString("") || ""}
-                        onChange={(e) =>
-                          handleInputChange(
-                            field as keyof IDeposit,
-                            e.target.value
-                          )
-                        }
-                      >
-                        <option value="">선택</option>
-                        <option value={processType.DEFAULT}>기본</option>
-                        <option value={processType.PRECHARGE}>선충전</option>
-                        <option value={processType.DEDUCT}>차감</option>
-                        <option value={processType.REMITPAYCO}>
-                          송금/결제(회사)
-                        </option>
-                        <option value={processType.REMITPAYDE}>
-                          송금/결제(차감)
-                        </option>
-                      </select>
-                    ) : field === "deductAmount" ? (
-                      <input
-                        type="text"
-                        className="w-100"
-                        value={Number(value) || ""}
-                        disabled={newDeposit.processType !== processType.DEDUCT} // 조건부 비활성화
-                        onChange={(e) =>
-                          handleInputChange(
-                            field as keyof IDeposit,
-                            parseInt(e.target.value) || 0
-                          )
-                        }
-                      />
-                    ) : field === "depositDueDate" ? (
-                      <input
-                        type="date"
-                        className="w-100 text-center"
-                        value={
-                          value instanceof Date
-                            ? dayjs(value).format("YYYY-MM-DD")
-                            : value || ""
-                        }
-                        disabled={
-                          newDeposit.processType !== processType.PRECHARGE
-                        } // 조건부 비활성화
-                        onChange={(e) =>
-                          handleInputChange(
-                            field as keyof IDeposit,
-                            new Date(e.target.value)
-                          )
-                        }
-                      />
-                    ) : (
-                      <input
-                        type={
-                          field === "progressDate" || field === "depositDate"
-                            ? "date"
-                            : "text"
-                        }
-                        className="w-100"
-                        value={
-                          value instanceof Date
-                            ? dayjs(value).format("YYYY-MM-DD")
-                            : value || ""
-                        }
-                        onChange={(e) =>
-                          handleInputChange(
-                            field as keyof IDeposit,
-                            field === "depositAmount"
-                              ? parseInt(e.target.value.replace(/,/g, "")) || 0
-                              : e.target.value
-                          )
-                        }
-                      />
-                    )}
-                  </td>
-                ))}
-              </tr>
-            )}
+            <tr>
+              {[
+                {
+                  field: "progressDate",
+                  value: selectedRow
+                    ? selectedRow?.progressDate
+                    : newDeposit.progressDate,
+                },
+                {
+                  field: "company",
+                  value: selectedRow
+                    ? selectedRow?.company
+                    : newDeposit.company,
+                },
+                {
+                  field: "depositor",
+                  value: selectedRow
+                    ? selectedRow?.depositor
+                    : newDeposit.depositor,
+                },
+                {
+                  field: "depositDate",
+                  value: selectedRow
+                    ? selectedRow?.depositDate
+                    : newDeposit.depositDate,
+                },
+                {
+                  field: "taxInvoice",
+                  value: selectedRow
+                    ? selectedRow?.taxInvoice
+                    : newDeposit.taxInvoice,
+                },
+                {
+                  field: "depositAmount",
+                  value: selectedRow
+                    ? selectedRow?.depositAmount
+                    : newDeposit.depositAmount,
+                },
+                {
+                  field: "deductAmount",
+                  value: selectedRow
+                    ? selectedRow?.deductAmount
+                    : newDeposit.deductAmount,
+                },
+                {
+                  field: "paymentType",
+                  value: selectedRow
+                    ? selectedRow?.paymentType
+                    : newDeposit.paymentType,
+                },
+                {
+                  field: "processType",
+                  value: selectedRow
+                    ? selectedRow?.processType
+                    : newDeposit.processType,
+                },
+                {
+                  field: "depositDueDate",
+                  value: selectedRow
+                    ? selectedRow?.depositDueDate
+                    : newDeposit.depositDueDate,
+                },
+              ].map(({ field, value }, index) => (
+                <td key={index}>
+                  {field === "paymentType" ? (
+                    <select
+                      className="w-100"
+                      value={value?.toString() || ""}
+                      onChange={(e) =>
+                        handleInputChange(
+                          field as keyof IDeposit,
+                          e.target.value
+                        )
+                      }
+                    >
+                      <option value="">선택</option>
+                      <option value={paymentType.CARD}>카드</option>
+                      <option value={paymentType.TRANSFER}>계좌이체</option>
+                    </select>
+                  ) : field === "processType" ? (
+                    <select
+                      className="w-100"
+                      value={value?.toString() || ""}
+                      onChange={(e) =>
+                        handleInputChange(
+                          field as keyof IDeposit,
+                          e.target.value
+                        )
+                      }
+                    >
+                      <option value="">선택</option>
+                      <option value={processType.DEFAULT}>기본</option>
+                      <option value={processType.PRECHARGE}>선충전</option>
+                      <option value={processType.DEDUCT}>차감</option>
+                      <option value={processType.REMITPAYCO}>
+                        송금/결제(회사)
+                      </option>
+                      <option value={processType.REMITPAYDE}>
+                        송금/결제(차감)
+                      </option>
+                    </select>
+                  ) : field === "deductAmount" ? (
+                    <input
+                      type="number"
+                      className="w-100"
+                      value={value?.toLocaleString() || 0}
+                      disabled={
+                        selectedRow?.processType !== processType.DEDUCT &&
+                        selectedRow?.processType !== processType.REMITPAYDE &&
+                        newDeposit.processType !== processType.DEDUCT &&
+                        newDeposit.processType !== processType.REMITPAYDE
+                      }
+                      onChange={(e) =>
+                        handleInputChange(
+                          field as keyof IDeposit,
+                          parseInt(e.target.value.replace(/,/g, ""), 10) || 0
+                        )
+                      }
+                    />
+                  ) : field === "depositDueDate" ? (
+                    <input
+                      type="date"
+                      className="w-100"
+                      value={
+                        value instanceof Date
+                          ? dayjs(value).format("YYYY-MM-DD")
+                          : value || ""
+                      }
+                      disabled={
+                        selectedRow?.processType !== processType.PRECHARGE &&
+                        newDeposit.processType !== processType.PRECHARGE
+                      }
+                      onChange={(e) =>
+                        handleInputChange(
+                          field as keyof IDeposit,
+                          new Date(e.target.value)
+                        )
+                      }
+                    />
+                  ) : (
+                    <input
+                      type={
+                        field === "progressDate" || field === "depositDate"
+                          ? "date"
+                          : "text"
+                      }
+                      className="w-100"
+                      value={
+                        field === "progressDate" || field === "depositDate"
+                          ? dayjs(value).format("YYYY-MM-DD")
+                          : value?.toString() || ""
+                      }
+                      onChange={(e) =>
+                        handleInputChange(
+                          field as keyof IDeposit,
+                          field === "depositAmount"
+                            ? parseInt(e.target.value.replace(/,/g, ""), 10) ||
+                                0
+                            : field === "progressDate" ||
+                              field === "depositDate"
+                            ? new Date(e.target.value)
+                            : e.target.value
+                        )
+                      }
+                    />
+                  )}
+                </td>
+              ))}
+            </tr>
           </tbody>
         </table>
       </div>
@@ -1199,7 +1139,7 @@ const Deposit: React.FC = () => {
           </h5>
         </div>
         {selectedRow && (
-          <div>
+          <div style={{ fontSize: ".875em" }}>
             {selectedCharge && (
               <>
                 <button
@@ -1241,7 +1181,7 @@ const Deposit: React.FC = () => {
         )}
       </div>
       <div className="table-full-width px-0 table-responsive border-bottom pb-3">
-        <table className="table">
+        <table className="table" style={{ fontSize: ".875em" }}>
           <thead>
             <tr className="text-nowrap text-center">
               <th>선택</th>
@@ -1464,13 +1404,7 @@ const Deposit: React.FC = () => {
             <option value="complete">완료</option>
             <option value="refund">환불</option>
           </select>
-          <button
-            className="btn btn-primary"
-            onClick={() => {
-              alert(selectedRow?.uuid);
-              handleCopy();
-            }}
-          >
+          <button className="btn btn-primary" onClick={() => handleCopy()}>
             복사
           </button>
         </div>
@@ -1513,7 +1447,7 @@ const Deposit: React.FC = () => {
                     cursor: "pointer",
                     whiteSpace: "nowrap",
                     textAlign: "center",
-                    color: row.rechargeableAmount === 0 ? "#FFC0CB" : "inherit",
+                    color: row.rechargeableAmount === 0 ? "#a0a0a0" : "inherit",
                   }}
                 >
                   <td>

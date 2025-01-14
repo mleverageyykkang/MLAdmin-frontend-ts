@@ -77,3 +77,56 @@ h5{
         background-color: #f2f2f2;
     }
 }
+
+.filter-container {
+  display: flex;
+//   justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid #e9e9e9;
+  background-color: #f9f9f9;
+
+  label {
+    font-size: 1rem;
+    font-weight: bold;
+    margin-right: 0.5rem;
+  }
+
+  select {
+    padding: 0.5rem;
+    font-size: 0.9rem;
+    border: 1px solid #cccccc;
+    border-radius: 4px;
+    outline: none;
+    margin-right: 1rem;
+    cursor: pointer;
+  }
+}
+
+.divider-container {
+  margin-left: 1rem;
+
+  ul {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    gap: 1.5rem;
+  }
+
+  li {
+    list-style: none;
+    font-size: 1rem;
+    font-weight: bold;
+    color: #333333;
+    cursor: pointer;
+    transition: color 0.3s ease;
+
+    &:hover {
+      color: #007bff;
+    }
+
+    &.active {
+      color: #007bff;
+    }
+  }
+}

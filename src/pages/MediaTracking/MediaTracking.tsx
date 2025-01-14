@@ -43,13 +43,13 @@ const MediaTracking: React.FC = () => {
   const { isLoggedIn } = useAuth();
   const [excelData, setExcelData] = useState<IMediaViral[]>();
   const selectedMediaFiles = useRef<HTMLInputElement | null>(null);
-  const selectedCardFiles = useRef<HTMLInputElement>(null);
   const [mediaData, setMediaData] = useState<IMediaViralSum[]>([]);
   const [cardData, setCardData] = useState<ICardSum>();
   const [viralData, setViralData] = useState<IMediaViral[]>([]);
   const [salesResult, setSalesResult] = useState<ISalesResult[]>([]);
   const [unmappedAccounts, setUnmappedAccounts] = useState<IMediaViral[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<string>("전체");
   // 세전 및 인센티브 테이블 레이블 설정정
   const labels: any = {
     payVatExcludeSum: `${selectedYear}년 ${selectedMonth}월`,
@@ -81,10 +81,7 @@ const MediaTracking: React.FC = () => {
       if (user.role === "admin" || user.role === "system") {
         const marketerResponse = response.data.body;
         const marketers = marketerResponse
-          .filter(
-            (marketer: any) =>
-              marketer.departmentUuid === "3" || marketer.uid === "leverage1259"
-          )
+          .filter((marketer: any) => marketer.departmentUuid === "3")
           .sort((a: any, b: any) => a.positionUuid - b.positionUuid)
           .map((marketer: any) => ({ uid: marketer.uid, name: marketer.name }));
         setMarketerList(marketers);
@@ -114,14 +111,14 @@ const MediaTracking: React.FC = () => {
   // 바이럴 데이터 불러오기
   const getVirals = async () => {
     try {
-      const url = `/traking/viral?marketerUid=${
+      const url = `/traking/viral?${
         userRole === "system" || userRole === "admin"
-          ? selectedMarketer
-          : userId
+          ? ""
+          : `marketerUid=${userId}`
       }&year=${selectedYear}&month=${selectedMonth}`;
       const response = await axios.get(url);
       if (response.status === 200) {
-        setViralData(response.data.body?.mediaViralInfo);
+        setViralData(response.data.body);
       }
     } catch (error: any) {
       console.error(
@@ -180,16 +177,16 @@ const MediaTracking: React.FC = () => {
       console.error("Failed to fetch Uploaded Media Data:", error);
     }
   };
-  //초기 데이터 로드드
+  //초기 데이터 로드
   useEffect(() => {
     const initializeData = async () => {
       await fetchUser();
       if (userRole && userId) {
         getMedias();
-        getExcelMedias();
         getVirals();
         getCards();
         getSalesResults();
+        getExcelMedias();
       }
     };
     initializeData();
@@ -201,7 +198,7 @@ const MediaTracking: React.FC = () => {
     selectedMonth,
     selectedYear,
   ]);
-  // 년도 월 선택택
+  // 년도 월 선택
   const handleYearChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedYear(parseInt(e.target.value, 10));
   };
@@ -251,9 +248,8 @@ const MediaTracking: React.FC = () => {
       });
       if (response.status === 200) {
         alert("파일 업로드 성공!"); // 업로드 성공 메시지
+        await getExcelMedias();
       }
-      await getExcelMedias();
-
       // 미지정 데이터 확인
       getUnmappedAccounts();
     } catch (error: any) {
@@ -265,12 +261,6 @@ const MediaTracking: React.FC = () => {
     } finally {
       event.target.value = ""; // 파일 입력 초기화
     }
-  };
-
-  // 마케터 필터 변경 처리
-  const handleMarketerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const marketerUid = e.target.value;
-    setSelectedMarketer(marketerUid);
   };
 
   const getMediaColor = (media: string) => {
@@ -299,391 +289,334 @@ const MediaTracking: React.FC = () => {
     else return "transparent";
   };
 
+  const handleFilterClick = (filter: string) => {
+    setActiveFilter(filter);
+  };
+
   return (
-    <div className="ml-2">
+    <div>
       {/* 필터 */}
-      <div className="mb-3">
-        <label className="mr-2">기간</label>
-        <select
-          className="mr-2"
-          value={selectedYear}
-          onChange={handleYearChange}
-        >
-          {years.map((year) => (
-            <option value={year} key={year}>
-              {year}년
-            </option>
-          ))}
-        </select>
-        <select
-          className="mr-2"
-          value={selectedMonth}
-          onChange={handleMonthChange}
-        >
-          {months.map((month) => (
-            <option key={month} value={month}>
-              {month}월
-            </option>
-          ))}
-        </select>
-        {(userRole === "system" || userRole === "admin") && (
-          <>
-            <label className="mr-2">이름:</label>
-            <select value={selectedMarketer} onChange={handleMarketerChange}>
-              {marketerList.map((marketer: any, index) => (
-                <option
-                  key={marketer.uid}
-                  value={marketer.uid}
-                  selected={index === 0}
-                >
-                  {marketer.name}
-                </option>
-              ))}
-            </select>
-          </>
-        )}
+      <div className={styles["filter-container"]}>
+        <div>
+          <label>기간</label>
+          <select value={selectedYear} onChange={handleYearChange}>
+            {years.map((year) => (
+              <option value={year} key={year}>
+                {year}년
+              </option>
+            ))}
+          </select>
+          <select value={selectedMonth} onChange={handleMonthChange}>
+            {months.map((month) => (
+              <option value={month} key={month}>
+                {month}월
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className={styles["divider-container"]}>
+          <ul>
+            {["전체", "매체 + 바이럴", "카드수수료"].map((filter) => (
+              <li
+                key={filter}
+                className={activeFilter === filter ? styles["active"] : ""}
+                onClick={() => handleFilterClick(filter)}
+              >
+                {filter}
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
 
       {/* 세전 및 인센티브 테이블 */}
-      <h5>결과</h5>
-      <div className="d-flex mt-3">
-        <div className="col-3 pl-0 mb-3">
-          <table className={`${styles["vertical-table"]} mb-2`}>
-            {salesResult.map((item, index) => (
-              <tbody key={index}>
-                {Object.entries(item.preTax || {}).map(([key, value]) => (
-                  <tr key={key}>
-                    <td
-                      className="w-50"
-                      style={{
-                        backgroundColor:
-                          key === "deductSum" ? "#ffc000" : "#434343",
-                        color: "white",
-                      }}
-                    >
-                      {labels[key]}
-                    </td>
-                    <td className="text-right">
-                      {Number(value)?.toLocaleString()}
-                    </td>
-                  </tr>
+      {userRole === "user" ? (
+        <div className="pr-3">
+          <h5>결과</h5>
+          <div className="d-flex mt-3">
+            <div className="col-3 pl-0 mb-3">
+              <table className={`${styles["vertical-table"]} mb-2`}>
+                {salesResult.map((item, index) => (
+                  <tbody key={index}>
+                    {Object.entries(item.preTax || {}).map(([key, value]) => (
+                      <tr key={key}>
+                        <td
+                          className="w-50"
+                          style={{
+                            backgroundColor:
+                              key === "deductSum" ? "#ffc000" : "#434343",
+                            color: "white",
+                          }}
+                        >
+                          {labels[key]}
+                        </td>
+                        <td className="text-right">
+                          {Number(value)?.toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
                 ))}
-              </tbody>
-            ))}
-          </table>
-          <table className={styles["vertical-table"]}>
-            {salesResult.map((item, index) => (
-              <tbody key={index}>
-                {Object.entries(item.incentiveCalculation || {}).map(
-                  ([key, value]) => (
-                    <tr key={key}>
-                      <td
-                        className="w-50"
-                        style={{
-                          backgroundColor:
-                            key === "incentive" || key === "incenctiveRate"
-                              ? "#434343"
-                              : "#38761d",
-                          color: "white",
-                          fontWeight:
-                            key === "incentive" || key === "incenctiveRate"
-                              ? "normal"
-                              : "bold",
-                          display:
-                            value === 0 &&
-                            key !== "incentive" &&
-                            key !== "incenctiveRate"
-                              ? "none"
-                              : "",
-                        }}
-                      >
-                        {labels[key]}
-                      </td>
-                      <td
-                        className={`
+              </table>
+              <table className={styles["vertical-table"]}>
+                {salesResult.map((item, index) => (
+                  <tbody key={index}>
+                    {Object.entries(item.incentiveCalculation || {}).map(
+                      ([key, value]) => (
+                        <tr key={key}>
+                          <td
+                            className="w-50"
+                            style={{
+                              backgroundColor:
+                                key === "incentive" || key === "incenctiveRate"
+                                  ? "#434343"
+                                  : "#38761d",
+                              color: "white",
+                              fontWeight:
+                                key === "incentive" || key === "incenctiveRate"
+                                  ? "normal"
+                                  : "bold",
+                              display:
+                                value === 0 &&
+                                key !== "incentive" &&
+                                key !== "incenctiveRate"
+                                  ? "none"
+                                  : "",
+                            }}
+                          >
+                            {labels[key]}
+                          </td>
+                          <td
+                            className={`
                           ${
                             key === "incenctiveRate" ? "text-danger" : ""
                           } text-right`}
-                        style={
-                          key !== "incentive" && key !== "incenctiveRate"
-                            ? { display: value === 0 ? "none" : "" }
-                            : undefined
-                        }
-                      >
-                        {Number(value)?.toLocaleString()}
-                        {key === "incenctiveRate" ||
-                        key === "mentorAccProp" ||
-                        key === "mentorPayProp"
-                          ? " %"
-                          : ""}
-                      </td>
-                    </tr>
-                  )
-                )}
-              </tbody>
-            ))}
-          </table>
-        </div>
-
-        <div className="col-3">
-          <table className={`${styles["vertical-table"]} mb-2`}>
-            {salesResult.map((item, index) => (
-              <tbody key={index}>
-                {Object.entries(item.preTaxSalary || {}).map(([key, value]) => (
-                  <tr key={key}>
-                    <td
-                      className="w-50"
-                      style={{
-                        backgroundColor: "#454545",
-                        color: "white",
-                      }}
-                    >
-                      {labels[key]}
-                    </td>
-                    <td
-                      className="text-right"
-                      style={{
-                        color: key === "finalIncentive" ? "orange" : "",
-                      }}
-                    >
-                      {Number(value)?.toLocaleString()}
-                    </td>
-                  </tr>
+                            style={
+                              key !== "incentive" && key !== "incenctiveRate"
+                                ? { display: value === 0 ? "none" : "" }
+                                : undefined
+                            }
+                          >
+                            {Number(value)?.toLocaleString()}
+                            {key === "incenctiveRate" ||
+                            key === "mentorAccProp" ||
+                            key === "mentorPayProp"
+                              ? " %"
+                              : ""}
+                          </td>
+                        </tr>
+                      )
+                    )}
+                  </tbody>
                 ))}
-              </tbody>
-            ))}
-          </table>
-          <table className={styles["vertical-table"]}>
-            {salesResult.map((item, index) => (
-              <tbody key={index}>
-                {Object.entries(item.afterTaxIncentive || {}).map(
-                  ([key, value]) => (
-                    <tr key={key}>
-                      <td
-                        className="w-50"
-                        style={{
-                          backgroundColor: "#454545",
-                          color: "white",
-                        }}
-                      >
-                        {labels[key]}
-                      </td>
-                      <td
-                        className="text-right"
-                        style={{
-                          color:
-                            key === "finalAmount"
-                              ? "orange"
-                              : key === "sendAmount"
-                              ? "#3282F6"
-                              : "",
-                          // fontWeight: key === "sendAmount" ? "bold" : "",
-                        }}
-                      >
-                        {Number(value)?.toLocaleString()}
-                      </td>
-                    </tr>
-                  )
-                )}
-              </tbody>
-            ))}
-          </table>
+              </table>
+            </div>
+
+            <div className="col-3">
+              <table className={`${styles["vertical-table"]} mb-2`}>
+                {salesResult.map((item, index) => (
+                  <tbody key={index}>
+                    {Object.entries(item.preTaxSalary || {}).map(
+                      ([key, value]) => (
+                        <tr key={key}>
+                          <td
+                            className="w-50"
+                            style={{
+                              backgroundColor: "#454545",
+                              color: "white",
+                            }}
+                          >
+                            {labels[key]}
+                          </td>
+                          <td
+                            className="text-right"
+                            style={{
+                              color: key === "finalIncentive" ? "orange" : "",
+                            }}
+                          >
+                            {Number(value)?.toLocaleString()}
+                          </td>
+                        </tr>
+                      )
+                    )}
+                  </tbody>
+                ))}
+              </table>
+              <table className={styles["vertical-table"]}>
+                {salesResult.map((item, index) => (
+                  <tbody key={index}>
+                    {Object.entries(item.afterTaxIncentive || {}).map(
+                      ([key, value]) => (
+                        <tr key={key}>
+                          <td
+                            className="w-50"
+                            style={{
+                              backgroundColor: "#454545",
+                              color: "white",
+                            }}
+                          >
+                            {labels[key]}
+                          </td>
+                          <td
+                            className="text-right"
+                            style={{
+                              color:
+                                key === "finalAmount"
+                                  ? "orange"
+                                  : key === "sendAmount"
+                                  ? "#3282F6"
+                                  : "",
+                              // fontWeight: key === "sendAmount" ? "bold" : "",
+                            }}
+                          >
+                            {Number(value)?.toLocaleString()}
+                          </td>
+                        </tr>
+                      )
+                    )}
+                  </tbody>
+                ))}
+              </table>
+            </div>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div>{/* 전체 매출, 지급수수료(+/-) 합 */}</div>
+      )}
 
       {/* 매체 테이블 */}
-      <div className="d-flex align-items-center mb-3 mt-3">
-        <h5>매체 + 바이럴</h5>
-        <div className="d-flex ml-3">
-          <button
-            className={styles["btn"]}
-            onClick={() => {
-              selectedMediaFiles.current?.click();
-            }}
-          >
-            파일 등록
-          </button>
-          <input
-            type="file"
-            id="fileInput"
-            accept=".xlsx, .xls"
-            ref={selectedMediaFiles}
-            style={{ display: "none" }}
-            onChange={handleMediaFileUpload}
-          />
-        </div>
-      </div>
-      <table className={`${styles["horizontal-table"]}`}>
-        <thead>
-          <tr className="text-center">
-            <th>년도/월</th>
-            <th>매체</th>
-            <th>광고주명</th>
-            <th>광고주ID</th>
-            <th>광고비 (VAT-)</th>
-            <th>수수료율</th>
-            <th>지급수수료(VAT-)</th>
-            <th>지급수수료(VAT+)</th>
-            <th>페이백(%)</th>
-            <th>페이백(액)</th>
-            <th>매출합계</th>
-          </tr>
-        </thead>
-        <tbody>
-          {mediaData.length > 0 ? (
-            <>
-              <tr
-                className="text-center"
-                style={{ backgroundColor: "#666666", color: "white" }}
+      {(activeFilter == "전체" || activeFilter == "매체 + 바이럴") && (
+        <>
+          <div className="d-flex align-items-center ml-3 mb-3 mt-3">
+            <h5>매체 + 바이럴</h5>
+            <div className="d-flex ml-3">
+              <button
+                className={styles["btn"]}
+                onClick={() => {
+                  selectedMediaFiles.current?.click();
+                }}
               >
-                {mediaData.map((item) => (
-                  <>
-                    <td>합계</td>
-                    <td>-</td>
-                    <td>-</td>
-                    <td>-</td>
-                    <td>{item.advCostSum?.toLocaleString() || 0}</td>
-                    <td>- %</td>
-                    <td>{item.payVatExcludeSum?.toLocaleString() || 0}</td>
-                    <td>{item.payVatIncludeSum?.toLocaleString() || 0}</td>
-                    <td>- %</td>
-                    <td>{item.paybackAmountSum?.toLocaleString() || 0}</td>
-                    <td>{item.totalSum?.toLocaleString() || 0}</td>
-                  </>
-                ))}
+                파일 등록
+              </button>
+              <input
+                type="file"
+                id="fileInput"
+                accept=".xlsx, .xls"
+                ref={selectedMediaFiles}
+                style={{ display: "none" }}
+                onChange={handleMediaFileUpload}
+              />
+            </div>
+          </div>
+          <table className={`${styles["horizontal-table"]} ml-3`}>
+            <thead>
+              <tr className="text-center">
+                <th>년도/월</th>
+                <th>매체</th>
+                <th>광고주명</th>
+                <th>광고주ID</th>
+                <th>광고비 (VAT-)</th>
+                <th>수수료율</th>
+                <th>지급수수료(VAT-)</th>
+                <th>지급수수료(VAT+)</th>
+                <th>페이백(%)</th>
+                <th>페이백(액)</th>
+                <th>매출합계</th>
               </tr>
-              {excelData &&
-                excelData?.map((data: any) =>
-                  data.mediaViralInfo?.map((item: IMediaViral) => (
-                    <>
-                      <tr className="text-center">
-                        <td>
-                          {item.monthDate
-                            ? dayjs(item.monthDate).format("YYYY년 MM월")
-                            : ""}
-                        </td>
-                        <td
-                          style={{
-                            backgroundColor: getMediaColor(item.media || ""),
-                            color:
-                              getMediaColor(item.media || "") !== "transparent"
-                                ? "white"
-                                : "trasparent",
-                          }}
-                        >
-                          {item.media || ""}
-                        </td>
-                        <td>{item.clientName || ""}</td>
-                        <td>{item.clientId || ""}</td>
-                        <td>{item.advCost?.toLocaleString() || 0}</td>
-                        <td>
-                          {item.commissionRate
-                            ? item.commissionRate.toFixed(2)
-                            : "0.00"}{" "}
-                          %
-                        </td>
-                        <td>{item.payVatExclude?.toLocaleString() || 0}</td>
-                        <td>{item.payVatInclude?.toLocaleString() || 0}</td>
-                        <td>
-                          {item.paybackRate
-                            ? item.paybackRate.toFixed(2)
-                            : "0.00"}{" "}
-                          %
-                        </td>
-                        <td>{item.paybackAmount?.toLocaleString() || 0}</td>
-                        <td>{item.total?.toLocaleString() || 0}</td>
-                      </tr>
-                    </>
-                  ))
-                )}
-            </>
-          ) : (
-            <tr>
-              <td colSpan={11} className="text-center">
-                데이터가 없습니다.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-
-      {/* 바이럴 테이블 */}
-      <table
-        style={{ backgroundColor: "transparent" }}
-        className={`${styles["horizontal-table"]} no-first-row-style mt-3`}
-      >
-        <tbody>
-          {Array.isArray(viralData) &&
-            viralData.length > 0 &&
-            viralData.map((item) => (
-              <>
-                <tr className="text-center">
-                  <td>
-                    {item.monthDate
-                      ? dayjs(item.monthDate).format("YYYY년 MM월")
-                      : ""}
-                  </td>
-                  <td
-                    style={{
-                      backgroundColor: getMediaColor(item.media || ""),
-                      color:
-                        getMediaColor(item.media || "") !== "transparent"
-                          ? "white"
-                          : "trasparent",
-                    }}
+            </thead>
+            <tbody>
+              {mediaData.length > 0 ? (
+                <>
+                  <tr
+                    className="text-center"
+                    style={{ backgroundColor: "#666666", color: "white" }}
                   >
-                    {item.media || ""}
+                    {mediaData.map((item) => (
+                      <>
+                        <td>합계</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>{item.advCostSum?.toLocaleString() || 0}</td>
+                        <td>- %</td>
+                        <td>{item.payVatExcludeSum?.toLocaleString() || 0}</td>
+                        <td>{item.payVatIncludeSum?.toLocaleString() || 0}</td>
+                        <td>- %</td>
+                        <td>{item.paybackAmountSum?.toLocaleString() || 0}</td>
+                        <td>{item.totalSum?.toLocaleString() || 0}</td>
+                      </>
+                    ))}
+                  </tr>
+                  {excelData &&
+                    excelData?.map((data: any) =>
+                      data.mediaViralInfo?.map((item: IMediaViral) => (
+                        <>
+                          <tr className="text-center">
+                            <td>
+                              {item.monthDate
+                                ? dayjs(item.monthDate).format("YYYY년 MM월")
+                                : ""}
+                            </td>
+                            <td
+                              style={{
+                                backgroundColor: getMediaColor(
+                                  item.media || ""
+                                ),
+                                color:
+                                  getMediaColor(item.media || "") !==
+                                  "transparent"
+                                    ? "white"
+                                    : "trasparent",
+                              }}
+                            >
+                              {item.media || ""}
+                            </td>
+                            <td>{item.clientName || ""}</td>
+                            <td>{item.clientId || ""}</td>
+                            <td>{item.advCost?.toLocaleString() || 0}</td>
+                            <td>
+                              {item.commissionRate
+                                ? item.commissionRate.toFixed(2)
+                                : "0.00"}{" "}
+                              %
+                            </td>
+                            <td>{item.payVatExclude?.toLocaleString() || 0}</td>
+                            <td>{item.payVatInclude?.toLocaleString() || 0}</td>
+                            <td>
+                              {item.paybackRate
+                                ? item.paybackRate.toFixed(2)
+                                : "0.00"}{" "}
+                              %
+                            </td>
+                            <td>{item.paybackAmount?.toLocaleString() || 0}</td>
+                            <td>{item.total?.toLocaleString() || 0}</td>
+                          </tr>
+                        </>
+                      ))
+                    )}
+                </>
+              ) : (
+                <tr>
+                  <td colSpan={11} className="text-center">
+                    데이터가 없습니다.
                   </td>
-                  <td>{item.clientName || ""}</td>
-                  <td>{item.clientId || ""}</td>
-                  <td>{item.advCost?.toLocaleString() || 0}</td>
-                  <td>
-                    {item.commissionRate
-                      ? item.commissionRate.toFixed(2)
-                      : "0.00"}{" "}
-                    %
-                  </td>
-                  <td>{item.payVatExclude?.toLocaleString() || 0}</td>
-                  <td>{item.payVatInclude?.toLocaleString() || 0}</td>
                 </tr>
-              </>
-            ))}
-        </tbody>
-      </table>
+              )}
+            </tbody>
+          </table>
 
-      {/* 카드수수료 테이블 */}
-      <div className="d-flex align-items-center mb-3 mt-3">
-        <h5>카드 수수료</h5>
-      </div>
-      <table className={`${styles["horizontal-table"]}`}>
-        <thead>
-          <tr className="text-center">
-            <th>년도/월</th>
-            <th>매체</th>
-            <th>충전비(VAT+)</th>
-            <th>충전비(VAT-)</th>
-            <th>수수료율</th>
-            <th>지급수수료(VAT-)</th>
-            <th>지급수수료(VAT+)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {cardData ? (
-            <>
-              <tr
-                className="text-center"
-                style={{ backgroundColor: "#666666", color: "white" }}
-              >
-                <td>합계</td>
-                <td>-</td>
-                <td>{cardData?.chargeVatIncludeSum?.toLocaleString() || 0}</td>
-                <td>{cardData?.chargeVatExcludeSum?.toLocaleString() || 0}</td>
-                <td>- %</td>
-                <td>{cardData?.payVatExcludeSum?.toLocaleString() || 0}</td>
-                <td>{cardData?.payVatIncludeSum?.toLocaleString() || 0}</td>
-              </tr>
-              {Array.isArray(cardData?.cardInfo) &&
-                cardData?.cardInfo.map((item: ICard) => (
+          {/* 바이럴 테이블 */}
+          {/* <div>
+        <div>{JSON.stringify(viralData)}</div>
+      </div> */}
+          <table
+            style={{ backgroundColor: "transparent" }}
+            className={`${styles["horizontal-table"]} no-first-row-style mt-3 ml-3`}
+          >
+            <tbody>
+              {Array.isArray(viralData) &&
+                viralData.length > 0 &&
+                viralData.map((item) => (
                   <>
                     <tr className="text-center">
                       <td>
@@ -695,34 +628,114 @@ const MediaTracking: React.FC = () => {
                         style={{
                           backgroundColor: getMediaColor(item.media || ""),
                           color:
-                            getMediaColor(item.media || "") === "transparent"
-                              ? "black"
-                              : "white",
+                            getMediaColor(item.media || "") !== "transparent"
+                              ? "white"
+                              : "trasparent",
                         }}
                       >
-                        {mediaLabels[item?.media || ""]}
+                        {item.media || ""}
                       </td>
-                      <td>{item.chargeVatInclude?.toLocaleString()}</td>
-                      <td>{item.chargeVatExclude?.toLocaleString()}</td>
+                      <td>{item.clientName || ""}</td>
+                      <td>{item.clientId || ""}</td>
+                      <td>{item.advCost?.toLocaleString() || 0}</td>
                       <td>
                         {item.commissionRate
                           ? item.commissionRate.toFixed(2)
                           : "0.00"}{" "}
                         %
                       </td>
-                      <td>{item.payVatExclude?.toLocaleString()}</td>
-                      <td>{item.payVatInclude?.toLocaleString()}</td>
+                      <td>{item.payVatExclude?.toLocaleString() || 0}</td>
+                      <td>{item.payVatInclude?.toLocaleString() || 0}</td>
                     </tr>
                   </>
                 ))}
-            </>
-          ) : (
-            <tr className="text-center text-secondary">
-              <td colSpan={7}>데이터가 없습니다.</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+            </tbody>
+          </table>
+        </>
+      )}
+
+      {/* 카드수수료 테이블 */}
+      {(activeFilter === "전체" || activeFilter === "카드수수료") && (
+        <>
+          <div className="d-flex align-items-center mb-3 mt-3 ml-3">
+            <h5>카드 수수료</h5>
+          </div>
+          <table className={`${styles["horizontal-table"]} ml-3`}>
+            <thead>
+              <tr className="text-center">
+                <th>년도/월</th>
+                <th>매체</th>
+                <th>충전비(VAT+)</th>
+                <th>충전비(VAT-)</th>
+                <th>수수료율</th>
+                <th>지급수수료(VAT-)</th>
+                <th>지급수수료(VAT+)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cardData ? (
+                <>
+                  {/* <div>{cardData?.marketerUid}</div> */}
+                  <tr
+                    className="text-center"
+                    style={{ backgroundColor: "#666666", color: "white" }}
+                  >
+                    <td>합계</td>
+                    <td>-</td>
+                    <td>
+                      {cardData?.chargeVatIncludeSum?.toLocaleString() || 0}
+                    </td>
+                    <td>
+                      {cardData?.chargeVatExcludeSum?.toLocaleString() || 0}
+                    </td>
+                    <td>- %</td>
+                    <td>{cardData?.payVatExcludeSum?.toLocaleString() || 0}</td>
+                    <td>{cardData?.payVatIncludeSum?.toLocaleString() || 0}</td>
+                  </tr>
+                  {Array.isArray(cardData?.cardInfo) &&
+                    cardData?.cardInfo.map((item: ICard) => (
+                      <>
+                        <tr className="text-center">
+                          <td>
+                            {item.monthDate
+                              ? dayjs(item.monthDate).format("YYYY년 MM월")
+                              : ""}
+                          </td>
+                          <td
+                            style={{
+                              backgroundColor: getMediaColor(item.media || ""),
+                              color:
+                                getMediaColor(item.media || "") ===
+                                "transparent"
+                                  ? "black"
+                                  : "white",
+                            }}
+                          >
+                            {mediaLabels[item?.media || ""]}
+                          </td>
+                          <td>{item.chargeVatInclude?.toLocaleString()}</td>
+                          <td>{item.chargeVatExclude?.toLocaleString()}</td>
+                          <td>
+                            {item.commissionRate
+                              ? item.commissionRate.toFixed(2)
+                              : "0.00"}{" "}
+                            %
+                          </td>
+                          <td>{item.payVatExclude?.toLocaleString()}</td>
+                          <td>{item.payVatInclude?.toLocaleString()}</td>
+                        </tr>
+                      </>
+                    ))}
+                </>
+              ) : (
+                <tr className="text-center text-secondary">
+                  <td colSpan={7}>데이터가 없습니다.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </>
+      )}
 
       {/* 미지정 데이터 모달 */}
       {/* {showModal && unmappedAccounts.length > 0 && (
