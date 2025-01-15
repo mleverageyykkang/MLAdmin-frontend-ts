@@ -9,6 +9,7 @@ import ICard from "../../common/models/card/ICard";
 import IMediaViralSum from "../../common/models/mediaViralSum/IMediaViralSum";
 import UnmappedModal from "./UnmappedModal";
 import styles from "./MediaTracking.module.scss";
+import { FaSortDown, FaSortUp } from "react-icons/fa6";
 
 interface User {
   uid: string;
@@ -41,15 +42,20 @@ const MediaTracking: React.FC = () => {
   >([]);
   const [selectedMarketer, setSelectedMarketer] = useState<string>("");
   const { isLoggedIn } = useAuth();
-  const [excelData, setExcelData] = useState<IMediaViral[]>();
+  const [excelData, setExcelData] = useState<IMediaViralSum>();
   const selectedMediaFiles = useRef<HTMLInputElement | null>(null);
-  const [mediaData, setMediaData] = useState<IMediaViralSum[]>([]);
+  const [mediaSum, setMediaSum] = useState<IMediaViralSum>();
+  const [cardSum, setCardSum] = useState<ICardSum>();
   const [cardData, setCardData] = useState<ICardSum>();
-  const [viralData, setViralData] = useState<IMediaViral[]>([]);
+  const [viralData, setViralData] = useState<IMediaViralSum>();
   const [salesResult, setSalesResult] = useState<ISalesResult[]>([]);
   const [unmappedAccounts, setUnmappedAccounts] = useState<IMediaViral[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [activeFilter, setActiveFilter] = useState<string>("전체");
+  const [sortColumn, setSortColumn] = useState<{
+    field: string;
+    order: "asc" | "desc";
+  }>({ field: "", order: "asc" });
   // 세전 및 인센티브 테이블 레이블 설정정
   const labels: any = {
     payVatExcludeSum: `${selectedYear}년 ${selectedMonth}월`,
@@ -81,26 +87,32 @@ const MediaTracking: React.FC = () => {
       if (user.role === "admin" || user.role === "system") {
         const marketerResponse = response.data.body;
         const marketers = marketerResponse
-          .filter((marketer: any) => marketer.departmentUuid === "3")
+          .filter(
+            (marketer: any) =>
+              marketer.departmentUuid === "3" || marketer.uid === "leverage1259"
+          )
           .sort((a: any, b: any) => a.positionUuid - b.positionUuid)
-          .map((marketer: any) => ({ uid: marketer.uid, name: marketer.name }));
+          .map((marketer: any) => ({
+            uid: marketer.uid,
+            name:
+              marketer.uid === "leverage1259"
+                ? "마케팅레버리지"
+                : marketer.name,
+          }));
         setMarketerList(marketers);
-        if (marketerList.length >= 0 && !selectedMarketer) {
-          setSelectedMarketer(marketers[0].uid);
-        }
       }
     } catch (error) {
       console.error("Failed to fetch Logined User info:", error);
     }
   };
   // 매체 테이블 합계 데이터 불러오기
-  const getMedias = async () => {
+  const getMediasSum = async () => {
     try {
-      const url = `/traking/mediaViral?marketerUid=${
-        userRole === "system" || userRole == "admin" ? selectedMarketer : userId
-      }&year=${selectedYear}&month=${selectedMonth}`;
+      const url = `/traking/totalMediaViral?${
+        userRole === "user" ? `marketerUid=${userId}&` : ""
+      }year=${selectedYear}&month=${selectedMonth}`;
       const response = await axios.get(url);
-      setMediaData(response.data.body);
+      setMediaSum(response.data.body);
     } catch (error: any) {
       console.error(
         "매체 데이터 불러오기 실패:",
@@ -112,10 +124,8 @@ const MediaTracking: React.FC = () => {
   const getVirals = async () => {
     try {
       const url = `/traking/viral?${
-        userRole === "system" || userRole === "admin"
-          ? ""
-          : `marketerUid=${userId}`
-      }&year=${selectedYear}&month=${selectedMonth}`;
+        userRole === "user" ? `marketerUid=${userId}&` : ""
+      }year=${selectedYear}&month=${selectedMonth}`;
       const response = await axios.get(url);
       if (response.status === 200) {
         setViralData(response.data.body);
@@ -126,16 +136,30 @@ const MediaTracking: React.FC = () => {
         error.response?.data?.result?.message
       );
       // 에러 발생 시 기존 데이터 초기화
-      setViralData([]);
     }
   };
+
+  // 카드 수수료 합
+  const getCardSum = async () => {
+    try {
+      const url = `/traking/totalCard?${
+        userRole === "user" ? `marketerUid=${userId}&` : ""
+      }year=${selectedYear}&month=${selectedMonth}`;
+      const response = await axios.get(url);
+      setCardSum(response.data.body);
+    } catch (error: any) {
+      console.error(
+        "매체 데이터 불러오기 실패:",
+        error.response?.data?.result?.message
+      );
+    }
+  };
+
   // 카드 수수료 데이터 불러오기
   const getCards = async () => {
     try {
-      const url = `/traking/card?marketerUid=${
-        userRole === "system" || userRole === "admin"
-          ? selectedMarketer
-          : userId
+      const url = `/traking/card?${
+        userRole === "user" ? `marketerUid=${userId}&` : ""
       }&year=${selectedYear}&month=${selectedMonth}`;
       const response = await axios.get(url);
       if (response.status === 200) {
@@ -152,13 +176,11 @@ const MediaTracking: React.FC = () => {
   // 세전 및 인센티브 데이터 불러오기
   const getSalesResults = async () => {
     try {
-      const url = `/traking/salesResult?marketerUid=${
-        userRole === "system" || userRole === "admin"
-          ? selectedMarketer
-          : userId
-      }&year=${selectedYear}&month=${selectedMonth}`;
-      const response = await axios.get(url);
-      setSalesResult(response.data.body);
+      if (userRole === "user") {
+        const url = `/traking/salesResult?marketerUid=${userId}&year=${selectedYear}&month=${selectedMonth}`;
+        const response = await axios.get(url);
+        setSalesResult(response.data.body);
+      }
     } catch (error) {
       console.error("Failed to fetch SalesResults Data:", error);
     }
@@ -166,11 +188,9 @@ const MediaTracking: React.FC = () => {
   // 엑셀 파일 (매체 테이블 리스트) 불러오기
   const getExcelMedias = async () => {
     try {
-      const url = `/traking/media?marketerUid=${
-        userRole === "system" || userRole === "admin"
-          ? selectedMarketer
-          : userId
-      }&year=${selectedYear}&month=${selectedMonth}`;
+      const url = `/traking/media?${
+        userRole === "user" ? `marketerUid=${userId}&` : ""
+      }year=${selectedYear}&month=${selectedMonth}`;
       const response = await axios.get(url);
       setExcelData(response.data.body);
     } catch (error) {
@@ -182,11 +202,12 @@ const MediaTracking: React.FC = () => {
     const initializeData = async () => {
       await fetchUser();
       if (userRole && userId) {
-        getMedias();
+        getMediasSum();
         getVirals();
+        getExcelMedias();
+        getCardSum();
         getCards();
         getSalesResults();
-        getExcelMedias();
       }
     };
     initializeData();
@@ -293,6 +314,24 @@ const MediaTracking: React.FC = () => {
     setActiveFilter(filter);
   };
 
+  const handleSort = async (field: string) => {
+    const order = sortColumn?.order === "asc" ? "desc" : "asc";
+    setSortColumn({ field, order });
+    try {
+      const url = `/traking/media?${
+        userRole === "user" ? `marketerUid=${userId}&` : ""
+      }year=${selectedYear}&month=${selectedMonth}&sortField=${field}&sortOrder=${
+        sortColumn?.order
+      }`;
+      const response = await axios.get(url);
+      if (response.status == 200) {
+        setExcelData(response.data.body);
+      }
+    } catch (error) {
+      console.error("Failed to Sort Datas", error);
+    }
+  };
+
   return (
     <div>
       {/* 필터 */}
@@ -316,7 +355,7 @@ const MediaTracking: React.FC = () => {
         </div>
         <div className={styles["divider-container"]}>
           <ul>
-            {["전체", "매체 + 바이럴", "카드수수료"].map((filter) => (
+            {["전체", "매체", "바이럴", "카드수수료"].map((filter) => (
               <li
                 key={filter}
                 className={activeFilter === filter ? styles["active"] : ""}
@@ -466,7 +505,6 @@ const MediaTracking: React.FC = () => {
                                   : key === "sendAmount"
                                   ? "#3282F6"
                                   : "",
-                              // fontWeight: key === "sendAmount" ? "bold" : "",
                             }}
                           >
                             {Number(value)?.toLocaleString()}
@@ -485,7 +523,7 @@ const MediaTracking: React.FC = () => {
       )}
 
       {/* 매체 테이블 */}
-      {(activeFilter == "전체" || activeFilter == "매체 + 바이럴") && (
+      {(activeFilter == "전체" || activeFilter == "매체") && (
         <>
           <div className="d-flex align-items-center ml-3 mb-3 mt-3">
             <h5>매체 + 바이럴</h5>
@@ -508,92 +546,115 @@ const MediaTracking: React.FC = () => {
               />
             </div>
           </div>
-          <table className={`${styles["horizontal-table"]} ml-3`}>
+          <table className={`${styles["horizontal-table"]} ml-3 mb-3`}>
             <thead>
               <tr className="text-center">
                 <th>년도/월</th>
-                <th>매체</th>
-                <th>광고주명</th>
-                <th>광고주ID</th>
-                <th>광고비 (VAT-)</th>
-                <th>수수료율</th>
-                <th>지급수수료(VAT-)</th>
-                <th>지급수수료(VAT+)</th>
-                <th>페이백(%)</th>
-                <th>페이백(액)</th>
-                <th>매출합계</th>
+                {[
+                  { field: "marketerUid", label: "담당자ID" },
+                  { field: "marketerName", label: "담당자명" },
+                  { field: "media", label: "매체" },
+                  { field: "clientName", label: "광고주명" },
+                  { field: "clientId", label: "광고주ID" },
+                  { field: "advCost", label: "광고비 (VAT-)" },
+                  { field: "commissionRate", label: "수수료율" },
+                  { field: "payVatExclude", label: "지급수수료(VAT-)" },
+                  { field: "payVatInclude", label: "지급수수료(VAT+)" },
+                  { field: "paybackRate", label: "페이백(%)" },
+                  { field: "paybackAmount", label: "페이백(액)" },
+                  { field: "total", label: "매출합계" },
+                ].map((header) => (
+                  <th
+                    key={header.field}
+                    onClick={() => {
+                      handleSort(header.field);
+                    }}
+                  >
+                    <div className="align-items-center">
+                      <span>{header.label}</span>
+                      {sortColumn?.field === header.field &&
+                      sortColumn.order === "asc" ? (
+                        <FaSortUp />
+                      ) : (
+                        <FaSortDown />
+                      )}
+                    </div>
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {mediaData.length > 0 ? (
+              {mediaSum ? (
                 <>
                   <tr
                     className="text-center"
                     style={{ backgroundColor: "#666666", color: "white" }}
                   >
-                    {mediaData.map((item) => (
+                    <td>합계</td>
+                    <td>-</td>
+                    <td>-</td>
+                    <td>-</td>
+                    <td>-</td>
+                    <td>-</td>
+                    <td>{mediaSum.totalAdvCost?.toLocaleString() || 0}</td>
+                    <td>- %</td>
+                    <td>
+                      {mediaSum.totalPayVatExclude?.toLocaleString() || 0}
+                    </td>
+                    <td>
+                      {mediaSum.totalPayVatInclude?.toLocaleString() || 0}
+                    </td>
+                    <td>- %</td>
+                    <td>
+                      {mediaSum.totalPaybackAmount?.toLocaleString() || 0}
+                    </td>
+                    <td>{mediaSum.grandTotalSum?.toLocaleString() || 0}</td>
+                  </tr>
+                  {Array.isArray(excelData) &&
+                    excelData.map((item: IMediaViral) => (
                       <>
-                        <td>합계</td>
-                        <td>-</td>
-                        <td>-</td>
-                        <td>-</td>
-                        <td>{item.advCostSum?.toLocaleString() || 0}</td>
-                        <td>- %</td>
-                        <td>{item.payVatExcludeSum?.toLocaleString() || 0}</td>
-                        <td>{item.payVatIncludeSum?.toLocaleString() || 0}</td>
-                        <td>- %</td>
-                        <td>{item.paybackAmountSum?.toLocaleString() || 0}</td>
-                        <td>{item.totalSum?.toLocaleString() || 0}</td>
+                        <tr className="text-center">
+                          <td>
+                            {item.monthDate
+                              ? dayjs(item.monthDate).format("YYYY년 MM월")
+                              : ""}
+                          </td>
+                          <td>{item.marketerUid}</td>
+                          <td>{item.marketerName}</td>
+                          <td
+                            style={{
+                              backgroundColor: getMediaColor(item.media || ""),
+                              color:
+                                getMediaColor(item.media || "") !==
+                                "transparent"
+                                  ? "white"
+                                  : "trasparent",
+                            }}
+                          >
+                            {item.media || ""}
+                          </td>
+                          <td>{item.clientName || ""}</td>
+                          <td>{item.clientId || ""}</td>
+                          <td>{item.advCost?.toLocaleString() || 0}</td>
+                          <td>
+                            {item.commissionRate
+                              ? item.commissionRate.toFixed(2)
+                              : "0.00"}{" "}
+                            %
+                          </td>
+                          <td>{item.payVatExclude?.toLocaleString() || 0}</td>
+                          <td>{item.payVatInclude?.toLocaleString() || 0}</td>
+                          <td>
+                            {item.paybackRate
+                              ? item.paybackRate.toFixed(2)
+                              : "0.00"}{" "}
+                            %
+                          </td>
+                          <td>{item.paybackAmount?.toLocaleString() || 0}</td>
+                          <td>{item.total?.toLocaleString() || 0}</td>
+                        </tr>
                       </>
                     ))}
-                  </tr>
-                  {excelData &&
-                    excelData?.map((data: any) =>
-                      data.mediaViralInfo?.map((item: IMediaViral) => (
-                        <>
-                          <tr className="text-center">
-                            <td>
-                              {item.monthDate
-                                ? dayjs(item.monthDate).format("YYYY년 MM월")
-                                : ""}
-                            </td>
-                            <td
-                              style={{
-                                backgroundColor: getMediaColor(
-                                  item.media || ""
-                                ),
-                                color:
-                                  getMediaColor(item.media || "") !==
-                                  "transparent"
-                                    ? "white"
-                                    : "trasparent",
-                              }}
-                            >
-                              {item.media || ""}
-                            </td>
-                            <td>{item.clientName || ""}</td>
-                            <td>{item.clientId || ""}</td>
-                            <td>{item.advCost?.toLocaleString() || 0}</td>
-                            <td>
-                              {item.commissionRate
-                                ? item.commissionRate.toFixed(2)
-                                : "0.00"}{" "}
-                              %
-                            </td>
-                            <td>{item.payVatExclude?.toLocaleString() || 0}</td>
-                            <td>{item.payVatInclude?.toLocaleString() || 0}</td>
-                            <td>
-                              {item.paybackRate
-                                ? item.paybackRate.toFixed(2)
-                                : "0.00"}{" "}
-                              %
-                            </td>
-                            <td>{item.paybackAmount?.toLocaleString() || 0}</td>
-                            <td>{item.total?.toLocaleString() || 0}</td>
-                          </tr>
-                        </>
-                      ))
-                    )}
                 </>
               ) : (
                 <tr>
@@ -604,51 +665,88 @@ const MediaTracking: React.FC = () => {
               )}
             </tbody>
           </table>
+        </>
+      )}
 
-          {/* 바이럴 테이블 */}
-          {/* <div>
-        <div>{JSON.stringify(viralData)}</div>
-      </div> */}
+      {/* 바이럴 테이블 */}
+      {(activeFilter == "전체" || activeFilter == "바이럴") && (
+        <>
           <table
             style={{ backgroundColor: "transparent" }}
-            className={`${styles["horizontal-table"]} no-first-row-style mt-3 ml-3`}
+            className={`${styles["horizontal-table"]} no-first-row-style mb-3 ml-3`}
           >
+            <thead>
+              <tr>
+                <th>년도/월</th>
+                {[
+                  { field: "marketerUid", label: "담당자ID" },
+                  { field: "marketerName", label: "담당자명" },
+                  { field: "media", label: "매체" },
+                  { field: "clientName", label: "광고주명" },
+                  { field: "clientId", label: "광고주ID" },
+                  { field: "advCost", label: "광고비 (VAT-)" },
+                  { field: "commissionRate", label: "수수료율" },
+                  { field: "payVatExclude", label: "지급수수료(VAT-)" },
+                  { field: "payVatInclude", label: "지급수수료(VAT+)" },
+                ].map((header) => (
+                  <th
+                    key={header.field}
+                    onClick={() => {
+                      handleSort(header.field);
+                    }}
+                  >
+                    <div className="align-items-center">
+                      <span>{header.label}</span>
+                      {sortColumn?.field === header.field &&
+                      sortColumn.order === "asc" ? (
+                        <FaSortUp />
+                      ) : (
+                        <FaSortDown />
+                      )}
+                    </div>
+                  </th>
+                ))}
+              </tr>
+            </thead>
             <tbody>
               {Array.isArray(viralData) &&
-                viralData.length > 0 &&
-                viralData.map((item) => (
-                  <>
-                    <tr className="text-center">
-                      <td>
-                        {item.monthDate
-                          ? dayjs(item.monthDate).format("YYYY년 MM월")
-                          : ""}
-                      </td>
-                      <td
-                        style={{
-                          backgroundColor: getMediaColor(item.media || ""),
-                          color:
-                            getMediaColor(item.media || "") !== "transparent"
-                              ? "white"
-                              : "trasparent",
-                        }}
-                      >
-                        {item.media || ""}
-                      </td>
-                      <td>{item.clientName || ""}</td>
-                      <td>{item.clientId || ""}</td>
-                      <td>{item.advCost?.toLocaleString() || 0}</td>
-                      <td>
-                        {item.commissionRate
-                          ? item.commissionRate.toFixed(2)
-                          : "0.00"}{" "}
-                        %
-                      </td>
-                      <td>{item.payVatExclude?.toLocaleString() || 0}</td>
-                      <td>{item.payVatInclude?.toLocaleString() || 0}</td>
-                    </tr>
-                  </>
-                ))}
+                viralData.map((data: any) =>
+                  data?.mediaViralInfo.map((item: IMediaViral) => (
+                    <>
+                      <tr className="text-center">
+                        <td>
+                          {item.monthDate
+                            ? dayjs(item.monthDate).format("YYYY년 MM월")
+                            : ""}
+                        </td>
+                        <td>{data.marketerUid}</td>
+                        <td>{data.marketerName}</td>
+                        <td
+                          style={{
+                            backgroundColor: getMediaColor(item.media || ""),
+                            color:
+                              getMediaColor(item.media || "") !== "transparent"
+                                ? "white"
+                                : "trasparent",
+                          }}
+                        >
+                          {item.media || ""}
+                        </td>
+                        <td>{item.clientName || ""}</td>
+                        <td>{item.clientId || ""}</td>
+                        <td>{item.advCost?.toLocaleString() || 0}</td>
+                        <td>
+                          {item.commissionRate
+                            ? item.commissionRate.toFixed(2)
+                            : "0.00"}{" "}
+                          %
+                        </td>
+                        <td>{item.payVatExclude?.toLocaleString() || 0}</td>
+                        <td>{item.payVatInclude?.toLocaleString() || 0}</td>
+                      </tr>
+                    </>
+                  ))
+                )}
             </tbody>
           </table>
         </>
@@ -657,43 +755,55 @@ const MediaTracking: React.FC = () => {
       {/* 카드수수료 테이블 */}
       {(activeFilter === "전체" || activeFilter === "카드수수료") && (
         <>
-          <div className="d-flex align-items-center mb-3 mt-3 ml-3">
+          <div className="d-flex align-items-center mb-3 ml-3">
             <h5>카드 수수료</h5>
           </div>
-          <table className={`${styles["horizontal-table"]} ml-3`}>
+          <table className={`${styles["horizontal-table"]} ml-3 mb-3`}>
             <thead>
               <tr className="text-center">
                 <th>년도/월</th>
-                <th>매체</th>
-                <th>충전비(VAT+)</th>
-                <th>충전비(VAT-)</th>
-                <th>수수료율</th>
-                <th>지급수수료(VAT-)</th>
-                <th>지급수수료(VAT+)</th>
+                {[
+                  { field: "marketerUid", label: "담당자ID" },
+                  { field: "marketerName", label: "담당자명" },
+                  { field: "media", label: "매체" },
+                  { field: "chargeVatExclude", label: "충전비(VAT-)" },
+                  { field: "chargeVatInclude", label: "충전비(VAT+)" },
+                  { field: "commissionRate", label: "수수료율" },
+                  { field: "payVatExclude", label: "지급수수료(VAT-)" },
+                  { field: "payVatInclude", label: "지급수수료(VAT+)" },
+                ].map((header) => (
+                  <th
+                    key={header.field}
+                    onClick={() => {
+                      handleSort(header.field);
+                    }}
+                  >
+                    {header.label}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {cardData ? (
+              {cardSum ? (
                 <>
-                  {/* <div>{cardData?.marketerUid}</div> */}
                   <tr
                     className="text-center"
                     style={{ backgroundColor: "#666666", color: "white" }}
                   >
                     <td>합계</td>
                     <td>-</td>
+                    <td>-</td>
+                    <td>-</td>
                     <td>
-                      {cardData?.chargeVatIncludeSum?.toLocaleString() || 0}
+                      {cardSum.totalChargeVatExclude?.toLocaleString() || 0}
                     </td>
-                    <td>
-                      {cardData?.chargeVatExcludeSum?.toLocaleString() || 0}
-                    </td>
+                    <td>{cardSum.totalPayVatInclude?.toLocaleString() || 0}</td>
                     <td>- %</td>
-                    <td>{cardData?.payVatExcludeSum?.toLocaleString() || 0}</td>
-                    <td>{cardData?.payVatIncludeSum?.toLocaleString() || 0}</td>
+                    <td>{cardSum.totalPayVatExclude?.toLocaleString() || 0}</td>
+                    <td>{cardSum.totalPayVatInclude?.toLocaleString() || 0}</td>
                   </tr>
-                  {Array.isArray(cardData?.cardInfo) &&
-                    cardData?.cardInfo.map((item: ICard) => (
+                  {Array.isArray(cardData) &&
+                    cardData.map((item: ICard) => (
                       <>
                         <tr className="text-center">
                           <td>
@@ -701,6 +811,8 @@ const MediaTracking: React.FC = () => {
                               ? dayjs(item.monthDate).format("YYYY년 MM월")
                               : ""}
                           </td>
+                          <td>{item.marketerUid}</td>
+                          <td>{item.marketerName}</td>
                           <td
                             style={{
                               backgroundColor: getMediaColor(item.media || ""),
