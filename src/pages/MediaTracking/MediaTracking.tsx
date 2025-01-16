@@ -9,7 +9,7 @@ import ICard from "../../common/models/card/ICard";
 import IMediaViralSum from "../../common/models/mediaViralSum/IMediaViralSum";
 import UnmappedModal from "./UnmappedModal";
 import styles from "./MediaTracking.module.scss";
-import { FaSortDown, FaSortUp } from "react-icons/fa6";
+import { FaSort } from "react-icons/fa6";
 
 interface User {
   uid: string;
@@ -52,6 +52,11 @@ const MediaTracking: React.FC = () => {
   const [unmappedAccounts, setUnmappedAccounts] = useState<IMediaViral[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [activeFilter, setActiveFilter] = useState<string>("전체");
+  const [tooltipOpen, setTooltipOpen] = useState<{
+    table: string;
+    field: string;
+  } | null>(null);
+
   const [sortColumn, setSortColumn] = useState<{
     field: string;
     order: "asc" | "desc";
@@ -307,29 +312,43 @@ const MediaTracking: React.FC = () => {
       media === "momnet"
     )
       return "#e69138";
-    else return "transparent";
+    else return "black";
   };
 
   const handleFilterClick = (filter: string) => {
     setActiveFilter(filter);
   };
 
-  const handleSort = async (field: string) => {
-    const order = sortColumn?.order === "asc" ? "desc" : "asc";
-    setSortColumn({ field, order });
+  const handleSort = async (
+    field: string,
+    order: "asc" | "desc",
+    table: "media" | "viral" | "card"
+  ) => {
     try {
-      const url = `/traking/media?${
+      let url = `/traking/${
+        table == "media" ? "media" : table == "viral" ? "viral" : "card"
+      }?${
         userRole === "user" ? `marketerUid=${userId}&` : ""
-      }year=${selectedYear}&month=${selectedMonth}&sortField=${field}&sortOrder=${
-        sortColumn?.order
-      }`;
+      }year=${selectedYear}&month=${selectedMonth}&sortField=${field}&sortOrder=${order}`;
       const response = await axios.get(url);
-      if (response.status == 200) {
-        setExcelData(response.data.body);
+
+      if (response.status === 200) {
+        if (table === "media") setExcelData(response.data.body);
+        if (table === "viral") setViralData(response.data.body);
+        if (table === "card") setCardData(response.data.body);
+        setTooltipOpen(null); // 말풍선 닫기
       }
     } catch (error) {
-      console.error("Failed to Sort Datas", error);
+      console.error(`Failed to Sort ${table} Data`, error);
     }
+  };
+
+  const toggleTooltip = (field: string, table: "media" | "viral" | "card") => {
+    setTooltipOpen(
+      tooltipOpen?.field === field && tooltipOpen?.table === table
+        ? null
+        : { field, table }
+    );
   };
 
   return (
@@ -564,20 +583,34 @@ const MediaTracking: React.FC = () => {
                   { field: "paybackAmount", label: "페이백(액)" },
                   { field: "total", label: "매출합계" },
                 ].map((header) => (
-                  <th
-                    key={header.field}
-                    onClick={() => {
-                      handleSort(header.field);
-                    }}
-                  >
-                    <div className="align-items-center">
+                  <th key={header.field} style={{ position: "relative" }}>
+                    <div className={styles["tooltip-container"]}>
                       <span>{header.label}</span>
-                      {sortColumn?.field === header.field &&
-                      sortColumn.order === "asc" ? (
-                        <FaSortUp />
-                      ) : (
-                        <FaSortDown />
-                      )}
+                      <FaSort
+                        onClick={() => toggleTooltip(header.field, "media")}
+                        style={{ cursor: "pointer", marginLeft: "8px" }}
+                      />
+                      {tooltipOpen?.field === header.field &&
+                        tooltipOpen?.table === "media" && (
+                          <div className={styles["tooltip"]}>
+                            <button
+                              onClick={() =>
+                                handleSort(header.field, "asc", "media")
+                              }
+                              className={styles["tooltip-button"]}
+                            >
+                              오름차순
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleSort(header.field, "desc", "media")
+                              }
+                              className={styles["tooltip-button"]}
+                            >
+                              내림차순
+                            </button>
+                          </div>
+                        )}
                     </div>
                   </th>
                 ))}
@@ -624,11 +657,6 @@ const MediaTracking: React.FC = () => {
                           <td
                             style={{
                               backgroundColor: getMediaColor(item.media || ""),
-                              color:
-                                getMediaColor(item.media || "") !==
-                                "transparent"
-                                  ? "white"
-                                  : "trasparent",
                             }}
                           >
                             {item.media || ""}
@@ -689,20 +717,34 @@ const MediaTracking: React.FC = () => {
                   { field: "payVatExclude", label: "지급수수료(VAT-)" },
                   { field: "payVatInclude", label: "지급수수료(VAT+)" },
                 ].map((header) => (
-                  <th
-                    key={header.field}
-                    onClick={() => {
-                      handleSort(header.field);
-                    }}
-                  >
-                    <div className="align-items-center">
+                  <th key={header.field} style={{ position: "relative" }}>
+                    <div className={styles["tooltip-container"]}>
                       <span>{header.label}</span>
-                      {sortColumn?.field === header.field &&
-                      sortColumn.order === "asc" ? (
-                        <FaSortUp />
-                      ) : (
-                        <FaSortDown />
-                      )}
+                      <FaSort
+                        onClick={() => toggleTooltip(header.field, "viral")}
+                        style={{ cursor: "pointer", marginLeft: "8px" }}
+                      />
+                      {tooltipOpen?.field === header.field &&
+                        tooltipOpen?.table === "viral" && (
+                          <div className={styles["tooltip"]}>
+                            <button
+                              onClick={() =>
+                                handleSort(header.field, "asc", "viral")
+                              }
+                              className={styles["tooltip-button"]}
+                            >
+                              오름차순
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleSort(header.field, "desc", "viral")
+                              }
+                              className={styles["tooltip-button"]}
+                            >
+                              내림차순
+                            </button>
+                          </div>
+                        )}
                     </div>
                   </th>
                 ))}
@@ -710,43 +752,37 @@ const MediaTracking: React.FC = () => {
             </thead>
             <tbody>
               {Array.isArray(viralData) &&
-                viralData.map((data: any) =>
-                  data?.mediaViralInfo.map((item: IMediaViral) => (
-                    <>
-                      <tr className="text-center">
-                        <td>
-                          {item.monthDate
-                            ? dayjs(item.monthDate).format("YYYY년 MM월")
-                            : ""}
-                        </td>
-                        <td>{data.marketerUid}</td>
-                        <td>{data.marketerName}</td>
-                        <td
-                          style={{
-                            backgroundColor: getMediaColor(item.media || ""),
-                            color:
-                              getMediaColor(item.media || "") !== "transparent"
-                                ? "white"
-                                : "trasparent",
-                          }}
-                        >
-                          {item.media || ""}
-                        </td>
-                        <td>{item.clientName || ""}</td>
-                        <td>{item.clientId || ""}</td>
-                        <td>{item.advCost?.toLocaleString() || 0}</td>
-                        <td>
-                          {item.commissionRate
-                            ? item.commissionRate.toFixed(2)
-                            : "0.00"}{" "}
-                          %
-                        </td>
-                        <td>{item.payVatExclude?.toLocaleString() || 0}</td>
-                        <td>{item.payVatInclude?.toLocaleString() || 0}</td>
-                      </tr>
-                    </>
-                  ))
-                )}
+                viralData.map((item: IMediaViral) => (
+                  <>
+                    <tr className="text-center">
+                      <td>
+                        {item.monthDate
+                          ? dayjs(item.monthDate).format("YYYY년 MM월")
+                          : ""}
+                      </td>
+                      <td>{item.marketerUid}</td>
+                      <td>{item.marketerName}</td>
+                      <td
+                        style={{
+                          backgroundColor: getMediaColor(item.media || ""),
+                        }}
+                      >
+                        {item.media || ""}
+                      </td>
+                      <td>{item.clientName || ""}</td>
+                      <td>{item.clientId || ""}</td>
+                      <td>{item.advCost?.toLocaleString() || 0}</td>
+                      <td>
+                        {item.commissionRate
+                          ? item.commissionRate.toFixed(2)
+                          : "0.00"}{" "}
+                        %
+                      </td>
+                      <td>{item.payVatExclude?.toLocaleString() || 0}</td>
+                      <td>{item.payVatInclude?.toLocaleString() || 0}</td>
+                    </tr>
+                  </>
+                ))}
             </tbody>
           </table>
         </>
@@ -772,13 +808,35 @@ const MediaTracking: React.FC = () => {
                   { field: "payVatExclude", label: "지급수수료(VAT-)" },
                   { field: "payVatInclude", label: "지급수수료(VAT+)" },
                 ].map((header) => (
-                  <th
-                    key={header.field}
-                    onClick={() => {
-                      handleSort(header.field);
-                    }}
-                  >
-                    {header.label}
+                  <th key={header.field} style={{ position: "relative" }}>
+                    <div className={styles["tooltip-container"]}>
+                      <span>{header.label}</span>
+                      <FaSort
+                        onClick={() => toggleTooltip(header.field, "card")}
+                        style={{ cursor: "pointer", marginLeft: "8px" }}
+                      />
+                      {tooltipOpen?.field === header.field &&
+                        tooltipOpen?.table === "card" && (
+                          <div className={styles["tooltip"]}>
+                            <button
+                              onClick={() =>
+                                handleSort(header.field, "asc", "card")
+                              }
+                              className={styles["tooltip-button"]}
+                            >
+                              오름차순
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleSort(header.field, "desc", "card")
+                              }
+                              className={styles["tooltip-button"]}
+                            >
+                              내림차순
+                            </button>
+                          </div>
+                        )}
+                    </div>
                   </th>
                 ))}
               </tr>
@@ -816,11 +874,6 @@ const MediaTracking: React.FC = () => {
                           <td
                             style={{
                               backgroundColor: getMediaColor(item.media || ""),
-                              color:
-                                getMediaColor(item.media || "") ===
-                                "transparent"
-                                  ? "black"
-                                  : "white",
                             }}
                           >
                             {mediaLabels[item?.media || ""]}
