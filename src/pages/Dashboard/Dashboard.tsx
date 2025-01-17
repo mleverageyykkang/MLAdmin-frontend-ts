@@ -109,7 +109,7 @@ function Dashboard() {
   ];
 
   return (
-    <>
+    <div>
       <Container fluid>
         <Row>
           <Col lg="3" sm="6">
@@ -198,7 +198,7 @@ function Dashboard() {
         </Row>
       </Container>
       <div></div>
-    </>
+    </div>
   );
 }
 

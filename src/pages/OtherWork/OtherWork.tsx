@@ -54,7 +54,7 @@ const OtherWork: React.FC = () => {
   const handleCancelClick = async () => {};
 
   return (
-    <>
+    <div className="p-3">
       {/* 필터 */}
       <div className="mb-4">
         <label className="mr-2">기간</label>
@@ -123,7 +123,7 @@ const OtherWork: React.FC = () => {
           </table>
         </div>
       </div>
-    </>
+    </div>
   );
 };
 export default OtherWork;

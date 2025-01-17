@@ -8,7 +8,7 @@ import IAccount, {
 } from "../../common/models/account/IAccount";
 import dayjs from "dayjs";
 import qs from "qs";
-import AccountStyles from "./AccountList.module.scss";
+import styles from "./AccountList.module.scss";
 
 interface User {
   uid: string;
@@ -31,9 +31,9 @@ const AccountList: React.FC = () => {
   const [editingRow, setEditingRow] = useState<string | null>(null);
   const [editedRow, setEditedRow] = useState<Partial<IAccount>>({}); // 행 수정 사항
   const [selectedRow, setSelectedRow] = useState<string | null>(null);
-   const [draggedColumnIndex, setDraggedColumnIndex] = useState<number | null>(
-     null
-   );
+  const [draggedColumnIndex, setDraggedColumnIndex] = useState<number | null>(
+    null
+  );
   const [columns, setColumns] = useState<
     Array<{ id: string; label: string; group: string; accessor: string }>
   >([
@@ -684,307 +684,309 @@ const AccountList: React.FC = () => {
   };
 
   return (
-    <div className="container-fluid">
-      <div className="mb-2 d-flex justify-content-between">
+    <div>
+      <div className={styles["filter-container"]}>
         {/* 필터 */}
-        <div>
-          {(userRole == "system" || userRole == "admin") && (
-            <>
-              <label className="mr-2">이름:</label>
-              <select
-                className="mr-2"
-                value={selectedMarketer}
-                onChange={handleMarketerChange}
-              >
-                {marketerList.map((marketer: any, index) => (
-                  <option
-                    key={marketer.uid}
-                    value={marketer.uid}
-                    selected={index === 0}
-                  >
-                    {marketer.name}
-                  </option>
-                ))}
-              </select>
-            </>
-          )}
-        </div>
-        <div className="d-flex justify-content-end mb-3">
-          {editingRow || selectedRow ? (
-            <>
-              {editingRow && buttonState !== "register" && (
-                <>
-                  <button
-                    className="btn btn-primary mr-2"
-                    onClick={handleSaveClick}
-                  >
-                    저장
-                  </button>
-                  <button
-                    className="btn btn-secondary mr-2"
-                    onClick={handleCancelClick}
-                  >
-                    취소
-                  </button>
-                  <button
-                    className="btn btn-danger"
-                    onClick={handleDeleteClick}
-                  >
-                    삭제
-                  </button>
-                </>
-              )}
-            </>
-          ) : null}
-          {/* 등록 버튼 */}
-          {buttonState === "default" ? (
-            <button className="btn btn-success mx-2" onClick={handleAddNew}>
-              추가
-            </button>
-          ) : (
-            <>
-              <button
-                className="btn btn-success mx-2"
-                onClick={handleRegisterClick}
-              >
-                등록
-              </button>
-              <button
-                className="btn btn-secondary mr-2"
-                onClick={handleCancelClick}
-              >
-                취소
-              </button>
-            </>
-          )}
-        </div>
+        {(userRole == "system" || userRole == "admin") && (
+          <>
+            <label className="mr-2">이름</label>
+            <select
+              className="mr-2"
+              value={selectedMarketer}
+              onChange={handleMarketerChange}
+            >
+              {marketerList.map((marketer: any, index) => (
+                <option
+                  key={marketer.uid}
+                  value={marketer.uid}
+                  selected={index === 0}
+                >
+                  {marketer.name}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
       </div>
-
-      <div
-        className={`${AccountStyles.accountTable} table-full-width px-0 table-responsive`}
-        style={{ overflow: "auto", maxHeight: "730px" }}
-      >
-        <table className="table table-bordered ">
-          <thead>
-            <tr className="text-nowrap text-center">
-              <th colSpan={1}></th>
-              <th colSpan={12}>광고주 정보</th>
-              <th colSpan={2}>중요도</th>
-              <th colSpan={8}>관리 정보</th>
-              <th colSpan={2}>이탈시</th>
-              <th colSpan={1}></th>
-              <th colSpan={3} style={{ backgroundColor: "#6aa84f" }}>
-                네이버
-              </th>
-              <th colSpan={3} style={{ backgroundColor: "#38761d" }}>
-                네이버 GFA
-              </th>
-              <th colSpan={4} style={{ backgroundColor: "#bf9000" }}>
-                카카오/카카오 모먼트
-              </th>
-              <th colSpan={2} style={{ backgroundColor: "#3c78d8" }}>
-                구글
-              </th>
-              <th colSpan={2} style={{ backgroundColor: "#e69138" }}>
-                당근
-              </th>
-              <th colSpan={2}>기타</th>
-              <th colSpan={2}>사수/부사수</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr className="text-nowrap text-center">
-              <td rowSpan={2}>선택</td>
-              {columns.map((column, index) =>
-                column.group !== "payback" ? (
-                  <td
-                    rowSpan={column.id !== "payback" ? 2 : undefined}
-                    colSpan={column.id === "payback" ? 5 : undefined}
-                    draggable
-                    onDragStart={() => handleDragStart(index)}
-                    onDragOver={handleDragOver}
-                    onDrop={() => handleDrop(index)}
+      <div className="my-3 pr-3 d-flex justify-content-end">
+        {editingRow || selectedRow ? (
+          <>
+            {editingRow && buttonState !== "register" && (
+              <>
+                <button
+                  className="btn btn-primary mr-2"
+                  onClick={handleSaveClick}
+                >
+                  저장
+                </button>
+                <button
+                  className="btn btn-secondary mr-2"
+                  onClick={handleCancelClick}
+                >
+                  취소
+                </button>
+                <button className="btn btn-danger" onClick={handleDeleteClick}>
+                  삭제
+                </button>
+              </>
+            )}
+          </>
+        ) : null}
+        {/* 등록 버튼 */}
+        {buttonState === "default" ? (
+          <button className="btn btn-success mx-2" onClick={handleAddNew}>
+            추가
+          </button>
+        ) : (
+          <>
+            <button
+              className="btn btn-success mx-2"
+              onClick={handleRegisterClick}
+            >
+              등록
+            </button>
+            <button
+              className="btn btn-secondary mr-2"
+              onClick={handleCancelClick}
+            >
+              취소
+            </button>
+          </>
+        )}
+      </div>
+      <div className="px-3">
+        <div
+          className={`${styles["accountTable"]} table-full-width table-responsive`}
+          style={{ overflow: "auto", maxHeight: "680px" }}
+        >
+          <table className="table table-bordered">
+            <thead>
+              <tr className="text-nowrap text-center">
+                <th colSpan={1}></th>
+                <th colSpan={12}>광고주 정보</th>
+                <th colSpan={2}>중요도</th>
+                <th colSpan={8}>관리 정보</th>
+                <th colSpan={2}>이탈시</th>
+                <th colSpan={1}></th>
+                <th colSpan={3} style={{ backgroundColor: "#6aa84f" }}>
+                  네이버
+                </th>
+                <th colSpan={3} style={{ backgroundColor: "#38761d" }}>
+                  네이버 GFA
+                </th>
+                <th colSpan={4} style={{ backgroundColor: "#bf9000" }}>
+                  카카오/카카오 모먼트
+                </th>
+                <th colSpan={2} style={{ backgroundColor: "#3c78d8" }}>
+                  구글
+                </th>
+                <th colSpan={2} style={{ backgroundColor: "#e69138" }}>
+                  당근
+                </th>
+                <th colSpan={2}>기타</th>
+                <th colSpan={2}>사수/부사수</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="text-nowrap text-center">
+                <td rowSpan={2}>선택</td>
+                {columns.map((column, index) =>
+                  column.group !== "payback" ? (
+                    <td
+                      rowSpan={column.id !== "payback" ? 2 : undefined}
+                      colSpan={column.id === "payback" ? 5 : undefined}
+                      draggable
+                      onDragStart={() => handleDragStart(index)}
+                      onDragOver={handleDragOver}
+                      onDrop={() => handleDrop(index)}
+                      style={{
+                        cursor: "grab",
+                        backgroundColor: "#f8f9fa",
+                        textAlign: "center",
+                      }}
+                    >
+                      {column.label}
+                    </td>
+                  ) : null
+                )}
+              </tr>
+              <tr
+                className="text-nowrap text-center"
+                style={{ backgroundColor: "#f8f9fa", textAlign: "center" }}
+              >
+                <td>네이버</td>
+                <td>카카오</td>
+                <td>구글</td>
+                <td>당근</td>
+                <td>기타</td>
+              </tr>
+              {Array.isArray(accountData) &&
+                accountData.length !== 0 &&
+                accountData.map((row: any, rowIndex) => (
+                  <tr
+                    key={row.uuid}
+                    className="text-nowrap text-center"
                     style={{
-                      cursor: "grab",
-                      backgroundColor: "#f8f9fa",
-                      textAlign: "center",
+                      backgroundColor:
+                        editingRow === row.uuid ? "#f0f8ff" : "transparent", // 선택 시 강조
                     }}
                   >
-                    {column.label}
-                  </td>
-                ) : null
-              )}
-            </tr>
-            <tr
-              className="text-nowrap text-center"
-              style={{ backgroundColor: "#f8f9fa", textAlign: "center" }}
-            >
-              <td>네이버</td>
-              <td>카카오</td>
-              <td>구글</td>
-              <td>당근</td>
-              <td>기타</td>
-            </tr>
-            {Array.isArray(accountData) &&
-              accountData.length !== 0 &&
-              accountData.map((row: any, rowIndex) => (
-                <tr
-                  key={row.uuid}
-                  className="text-nowrap text-center"
-                  style={{
-                    backgroundColor:
-                      editingRow === row.uuid ? "#f0f8ff" : "transparent", // 선택 시 강조
-                  }}
-                >
-                  <td className="text-center">
-                    <input
-                      type="checkbox"
-                      checked={selectedRow === row.uuid} // 선택 여부 확인
-                      disabled={buttonState === "register"} // 추가 상태에서는 체크박스
-                      onChange={() => handleCheckboxChange(row.uuid)} // 체크박스 선택 처리
-                    />
-                  </td>
-                  {columns.map((col) =>
-                    editingRow === row.uuid ? (
-                      <>
-                        {col.id !== "payback" ? (
-                          <td key={col.id}>
-                            {/* 편집모드 */}
-                            {col.id === "isAssisted" ? (
-                              <input
-                                type="checkbox"
-                                checked={editedRow.isAssisted || false}
-                                onChange={(e) => handleChange(e, "isAssisted")}
-                              />
-                            ) : col.accessor?.includes(".") ? (
-                              // 중첩 객체 접근 처리
-                              <input
-                                type="text"
-                                value={
-                                  col.accessor
-                                    .split(".")
-                                    .reduce(
-                                      (acc: any, key) => acc?.[key],
-                                      editedRow
-                                    ) || ""
-                                }
-                                onChange={(e) =>
-                                  handleNestedFieldChange(
-                                    e,
-                                    ...col.accessor.split(".") // 중첩 필드 접근
-                                  )
-                                }
-                              />
-                            ) : col.id === "transferDate" ||
-                              col.id === "leaveDate" ? (
-                              <input
-                                type="date"
-                                value={
-                                  editedRow[col.accessor as keyof IAccount]
-                                    ? (
-                                        editedRow[
-                                          col.accessor as keyof IAccount
-                                        ] as Date
-                                      )
-                                        .toISOString()
-                                        .slice(0, 10) // Date -> YYYY-MM-DD
-                                    : ""
-                                }
-                                onChange={(e) =>
-                                  handleChange(
-                                    e,
-                                    col.accessor as keyof IAccount
-                                  )
-                                }
-                              />
-                            ) : (
-                              <input
-                                type="text"
-                                value={
-                                  (
-                                    editedRow[
-                                      col.accessor as keyof IAccount
-                                    ] as string | number
-                                  )?.toLocaleString("") || ""
-                                }
-                                onChange={(e) =>
-                                  handleChange(
-                                    e,
-                                    col.accessor as keyof IAccount
-                                  )
-                                }
-                              />
-                            )}
-                          </td>
-                        ) : null}
-                      </>
-                    ) : (
-                      <>
-                        {col.id !== "payback" ? (
-                          <td>
-                            {col.id === "transferDate" ||
-                            col.id == "leaveDate" ? (
-                              row[col.accessor] ? (
-                                dayjs(row[col.accessor]).format("YYYY-MM-DD")
-                              ) : (
-                                ""
-                              )
-                            ) : col.id == "phone" ? (
-                              row[col.accessor] &&
-                              row[col.accessor].length == 11 ? (
-                                `${row[col.accessor]?.slice(0, 3)}-${row[
-                                  col.accessor
-                                ]?.slice(3, 7)}-${row[col.accessor]?.slice(7)}`
-                              ) : (
-                                row[col.accessor]
-                              )
-                            ) : col.id == "businessNumber" ? (
-                              row[col.accessor] &&
-                              row[col.accessor].length == 10 ? (
-                                `${row[col.accessor]?.slice(0, 3)}-${row[
-                                  col.accessor
-                                ]?.slice(3, 5)}-${row[col.accessor]?.slice(5)}`
-                              ) : (
-                                row[col.accessor]
-                              )
-                            ) : col.id == "spending" ? (
-                              Number(row[col.accessor]).toLocaleString()
-                            ) : col.id == "mentor" ? (
-                              marketerList.find(
-                                (user: any) => user.uid === row[col.accessor]
-                              )?.name || ""
-                            ) : col.accessor.includes(".") ? (
-                              col.group === "payback" ? (
+                    <td className="text-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedRow === row.uuid} // 선택 여부 확인
+                        disabled={buttonState === "register"} // 추가 상태에서는 체크박스
+                        onChange={() => handleCheckboxChange(row.uuid)} // 체크박스 선택 처리
+                      />
+                    </td>
+                    {columns.map((col) =>
+                      editingRow === row.uuid ? (
+                        <>
+                          {col.id !== "payback" ? (
+                            <td key={col.id}>
+                              {/* 편집모드 */}
+                              {col.id === "isAssisted" ? (
+                                <input
+                                  type="checkbox"
+                                  checked={editedRow.isAssisted || false}
+                                  onChange={(e) =>
+                                    handleChange(e, "isAssisted")
+                                  }
+                                />
+                              ) : col.accessor?.includes(".") ? (
                                 // 중첩 객체 접근 처리
-                                `${(
-                                  (col.accessor
-                                    .split(".")
-                                    .reduce((acc, key) => acc?.[key], row) ||
-                                    0) as number
-                                ).toFixed(1)} %`
+                                <input
+                                  type="text"
+                                  value={
+                                    col.accessor
+                                      .split(".")
+                                      .reduce(
+                                        (acc: any, key) => acc?.[key],
+                                        editedRow
+                                      ) || ""
+                                  }
+                                  onChange={(e) =>
+                                    handleNestedFieldChange(
+                                      e,
+                                      ...col.accessor.split(".") // 중첩 필드 접근
+                                    )
+                                  }
+                                />
+                              ) : col.id === "transferDate" ||
+                                col.id === "leaveDate" ? (
+                                <input
+                                  type="date"
+                                  value={
+                                    editedRow[col.accessor as keyof IAccount]
+                                      ? (
+                                          editedRow[
+                                            col.accessor as keyof IAccount
+                                          ] as Date
+                                        )
+                                          .toISOString()
+                                          .slice(0, 10) // Date -> YYYY-MM-DD
+                                      : ""
+                                  }
+                                  onChange={(e) =>
+                                    handleChange(
+                                      e,
+                                      col.accessor as keyof IAccount
+                                    )
+                                  }
+                                />
                               ) : (
-                                col.accessor
-                                  .split(".")
-                                  .reduce((acc, key) => acc?.[key], row) || ""
-                              )
-                            ) : col.id === "isAssisted" ? (
-                              <input
-                                type="checkbox"
-                                disabled
-                                checked={row[col.accessor]}
-                              />
-                            ) : (
-                              row[col.accessor]?.toLocaleString()
-                            )}
-                          </td>
-                        ) : null}
-                      </>
-                    )
-                  )}
-                </tr>
-              ))}
-          </tbody>
-        </table>
+                                <input
+                                  type="text"
+                                  value={
+                                    (
+                                      editedRow[
+                                        col.accessor as keyof IAccount
+                                      ] as string | number
+                                    )?.toLocaleString("") || ""
+                                  }
+                                  onChange={(e) =>
+                                    handleChange(
+                                      e,
+                                      col.accessor as keyof IAccount
+                                    )
+                                  }
+                                />
+                              )}
+                            </td>
+                          ) : null}
+                        </>
+                      ) : (
+                        <>
+                          {col.id !== "payback" ? (
+                            <td>
+                              {col.id === "transferDate" ||
+                              col.id == "leaveDate" ? (
+                                row[col.accessor] ? (
+                                  dayjs(row[col.accessor]).format("YYYY-MM-DD")
+                                ) : (
+                                  ""
+                                )
+                              ) : col.id == "phone" ? (
+                                row[col.accessor] &&
+                                row[col.accessor].length == 11 ? (
+                                  `${row[col.accessor]?.slice(0, 3)}-${row[
+                                    col.accessor
+                                  ]?.slice(3, 7)}-${row[col.accessor]?.slice(
+                                    7
+                                  )}`
+                                ) : (
+                                  row[col.accessor]
+                                )
+                              ) : col.id == "businessNumber" ? (
+                                row[col.accessor] &&
+                                row[col.accessor].length == 10 ? (
+                                  `${row[col.accessor]?.slice(0, 3)}-${row[
+                                    col.accessor
+                                  ]?.slice(3, 5)}-${row[col.accessor]?.slice(
+                                    5
+                                  )}`
+                                ) : (
+                                  row[col.accessor]
+                                )
+                              ) : col.id == "spending" ? (
+                                Number(row[col.accessor]).toLocaleString()
+                              ) : col.id == "mentor" ? (
+                                marketerList.find(
+                                  (user: any) => user.uid === row[col.accessor]
+                                )?.name || ""
+                              ) : col.accessor.includes(".") ? (
+                                col.group === "payback" ? (
+                                  // 중첩 객체 접근 처리
+                                  `${(
+                                    (col.accessor
+                                      .split(".")
+                                      .reduce((acc, key) => acc?.[key], row) ||
+                                      0) as number
+                                  ).toFixed(1)} %`
+                                ) : (
+                                  col.accessor
+                                    .split(".")
+                                    .reduce((acc, key) => acc?.[key], row) || ""
+                                )
+                              ) : col.id === "isAssisted" ? (
+                                <input
+                                  type="checkbox"
+                                  disabled
+                                  checked={row[col.accessor]}
+                                />
+                              ) : (
+                                row[col.accessor]?.toLocaleString()
+                              )}
+                            </td>
+                          ) : null}
+                        </>
+                      )
+                    )}
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

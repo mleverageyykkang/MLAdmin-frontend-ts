@@ -335,7 +335,7 @@ const User: React.FC = () => {
   };
 
   return (
-    <div className="container-fluid">
+    <div className="p-3">
       {/* 테이블 위의 버튼 */}
       <div className={`${styles["filter-container"]} mb-3`}>
         {editingRow || selectedRow ? (

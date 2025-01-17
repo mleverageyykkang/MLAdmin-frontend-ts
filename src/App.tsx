@@ -15,7 +15,6 @@ import Deposit from "./pages/Deposit/Deposit";
 import MediaTracking from "pages/MediaTracking/MediaTracking";
 import Adjustment from "pages/Adjustment/Adjustment";
 import TotalTracking from "pages/TotalTracking/TotalTracking";
-import path from "path";
 import OtherWork from "pages/OtherWork/OtherWork";
 
 const dashboardRoutes = [
@@ -29,19 +28,19 @@ const dashboardRoutes = [
   },
   {
     path: "/sheet",
-    name: "시트 관리",
+    name: "계정 관리",
     items: [
       // { path: "/1", name: "매체 수수료", layout: "/sheet" },
       { path: "/1", name: "계정 리스트", layout: "/sheet" },
       { path: "/2", name: "충전/세발/지출", layout: "/sheet" },
-      { path: "/3", name: "광고수수료 정산서", layout: "/sheet" },
     ],
   },
   {
     path: "/tracking",
-    name: "매출 트래킹",
+    name: "매출 관리",
     items: [
-      { path: "/media", name: "매체별", layout: "/tracking" },
+      { path: "/media", name: "매체 트래킹", layout: "/tracking" },
+      { path: "/settle", name: "광고수수료 정산서", layout: "/tracking" },
       { path: "/total", name: "종합", layout: "/tracking" },
     ],
   },

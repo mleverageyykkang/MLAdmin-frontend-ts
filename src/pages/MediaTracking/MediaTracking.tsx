@@ -9,23 +9,12 @@ import ICard from "../../common/models/card/ICard";
 import IMediaViralSum from "../../common/models/mediaViralSum/IMediaViralSum";
 import UnmappedModal from "./UnmappedModal";
 import styles from "./MediaTracking.module.scss";
-import { FaSort } from "react-icons/fa6";
+import { IoFilterSharp } from "react-icons/io5";
 
 interface User {
   uid: string;
   role: string;
 }
-const mediaLabels: Record<string, string> = {
-  meta: "메타",
-  google: "구글",
-  carot: "당근",
-  kakao: "카카오",
-  dable: "데이블",
-  gfa: "네이버GFA",
-  nosp: "네이버NOSP",
-  moment: "모먼트",
-  naver: "네이버",
-};
 
 const years = Array.from({ length: 6 }, (_, i) => dayjs().year() - 1 + i); // 연도 범위 생성 (현재 연도 +/- 5)
 const months = Array.from({ length: 12 }, (_, i) => i + 1); // 월 범위 생성
@@ -44,10 +33,17 @@ const MediaTracking: React.FC = () => {
   const { isLoggedIn } = useAuth();
   const [excelData, setExcelData] = useState<IMediaViralSum>();
   const selectedMediaFiles = useRef<HTMLInputElement | null>(null);
-  const [mediaSum, setMediaSum] = useState<IMediaViralSum>();
+  const [mediaSum, setMediaSum] = useState<{
+    type: string;
+    data: IMediaViralSum;
+  }>();
+  const [viralSum, setViralSum] = useState<{
+    type: string;
+    data: IMediaViralSum;
+  }>();
   const [cardSum, setCardSum] = useState<ICardSum>();
   const [cardData, setCardData] = useState<ICardSum>();
-  const [viralData, setViralData] = useState<IMediaViralSum>();
+  const [viralData, setViralData] = useState<IMediaViral[]>([]);
   const [salesResult, setSalesResult] = useState<ISalesResult[]>([]);
   const [unmappedAccounts, setUnmappedAccounts] = useState<IMediaViral[]>([]);
   const [showModal, setShowModal] = useState(false);
@@ -56,11 +52,6 @@ const MediaTracking: React.FC = () => {
     table: string;
     field: string;
   } | null>(null);
-
-  const [sortColumn, setSortColumn] = useState<{
-    field: string;
-    order: "asc" | "desc";
-  }>({ field: "", order: "asc" });
   // 세전 및 인센티브 테이블 레이블 설정정
   const labels: any = {
     payVatExcludeSum: `${selectedYear}년 ${selectedMonth}월`,
@@ -79,6 +70,81 @@ const MediaTracking: React.FC = () => {
     finalAmount: "신고금액",
     dutyAmount: "소득/주민세 합계",
     sendAmount: "송금액",
+  };
+  const [columns, setColumns] = useState([
+    { field: "marketerUid", label: "담당자ID", group: "info", width: "120px" },
+    { field: "marketerName", label: "담당자명", group: "info", width: "120px" },
+    { field: "media", label: "매체", group: "info", width: "100px" },
+    { field: "clientName", label: "광고주명", group: "info", width: "250px" },
+    { field: "clientId", label: "광고주ID", group: "money", width: "120px" },
+    {
+      field: "advCost",
+      label: "광고비 (VAT-)",
+      group: "money",
+      width: "120px",
+    },
+    {
+      field: "commissionRate",
+      label: "수수료율",
+      group: "money",
+      width: "120px",
+    },
+    {
+      field: "payVatExclude",
+      label: "지급수수료(VAT-)",
+      group: "money",
+      width: "120px",
+    },
+    {
+      field: "payVatInclude",
+      label: "지급수수료(VAT+)",
+      group: "money",
+      width: "120px",
+    },
+    {
+      field: "paybackRate",
+      label: "페이백(%)",
+      group: "money",
+      width: "120px",
+    },
+    {
+      field: "paybackAmount",
+      label: "페이백(액)",
+      group: "money",
+      width: "120px",
+    },
+    { field: "total", label: "매출합계", group: "money", width: "120px" },
+  ]);
+
+  const moveColumn = (fromIndex: number, toIndex: number) => {
+    setColumns((prevColumns) => {
+      const updatedColumns = [...prevColumns];
+      const [movedColumn] = updatedColumns.splice(fromIndex, 1);
+      updatedColumns.splice(toIndex, 0, movedColumn);
+      return updatedColumns;
+    });
+  };
+
+  const handleDragStart = (
+    e: React.DragEvent<HTMLTableHeaderCellElement>,
+    index: number
+  ) => {
+    e.dataTransfer.setData("colIndex", index.toString());
+  };
+
+  const handleDrop = (
+    e: React.DragEvent<HTMLTableHeaderCellElement>,
+    targetIndex: number
+  ) => {
+    const fromIndex = parseInt(e.dataTransfer.getData("colIndex"), 10);
+    if (columns[fromIndex].group !== columns[targetIndex].group) {
+      return;
+    }
+    moveColumn(fromIndex, targetIndex);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLTableHeaderCellElement>) => {
+    e.preventDefault();
   };
 
   const fetchUser = async () => {
@@ -99,10 +165,7 @@ const MediaTracking: React.FC = () => {
           .sort((a: any, b: any) => a.positionUuid - b.positionUuid)
           .map((marketer: any) => ({
             uid: marketer.uid,
-            name:
-              marketer.uid === "leverage1259"
-                ? "마케팅레버리지"
-                : marketer.name,
+            name: marketer.uid === "leverage1259" ? "마레" : marketer.name,
           }));
         setMarketerList(marketers);
       }
@@ -110,14 +173,19 @@ const MediaTracking: React.FC = () => {
       console.error("Failed to fetch Logined User info:", error);
     }
   };
-  // 매체 테이블 합계 데이터 불러오기
-  const getMediasSum = async () => {
+
+  // 매체 매출 합계
+  const getMediaSum = async () => {
     try {
-      const url = `/traking/totalMediaViral?${
-        userRole === "user" ? `marketerUid=${userId}&` : ""
+      const url = `/traking/totalMedia?${
+        selectedMarketer == ""
+          ? ""
+          : userRole == "system" || userRole == "admin"
+          ? `marketerUid=${selectedMarketer}&`
+          : `marketerUid=${userId}&`
       }year=${selectedYear}&month=${selectedMonth}`;
       const response = await axios.get(url);
-      setMediaSum(response.data.body);
+      setMediaSum(() => ({ type: "매체", data: response.data.body }));
     } catch (error: any) {
       console.error(
         "매체 데이터 불러오기 실패:",
@@ -125,11 +193,73 @@ const MediaTracking: React.FC = () => {
       );
     }
   };
+
+  // 바이럴 매출 합계
+  const getViralSum = async () => {
+    try {
+      const url = `/traking/totalViral?${
+        selectedMarketer == ""
+          ? ""
+          : userRole == "system" || userRole == "admin"
+          ? `marketerUid=${selectedMarketer}&`
+          : `marketerUid=${userId}&`
+      }year=${selectedYear}&month=${selectedMonth}`;
+      const response = await axios.get(url);
+      setViralSum(() => ({ type: "바이럴", data: response.data.body }));
+    } catch (error: any) {
+      console.error(
+        "매체 데이터 불러오기 실패:",
+        error.response?.data?.result?.message
+      );
+    }
+  };
+
+  // 카드 수수료 매출 합계
+  const getCardSum = async () => {
+    try {
+      const url = `/traking/totalCard?${
+        selectedMarketer == ""
+          ? ""
+          : userRole == "system" || userRole == "admin"
+          ? `marketerUid=${selectedMarketer}&`
+          : `marketerUid=${userId}&`
+      }year=${selectedYear}&month=${selectedMonth}`;
+      const response = await axios.get(url);
+      setCardSum(response.data.body);
+    } catch (error: any) {
+      console.error(
+        "매체 데이터 불러오기 실패:",
+        error.response?.data?.result?.message
+      );
+    }
+  };
+
+  // 엑셀 파일 (매체 테이블 리스트) 불러오기
+  const getExcelMedias = async () => {
+    try {
+      const url = `/traking/media?${
+        selectedMarketer == ""
+          ? ""
+          : userRole == "system" || userRole == "admin"
+          ? `marketerUid=${selectedMarketer}&`
+          : `marketerUid=${userId}&`
+      }year=${selectedYear}&month=${selectedMonth}`;
+      const response = await axios.get(url);
+      setExcelData(response.data.body);
+    } catch (error) {
+      console.error("Failed to fetch Uploaded Media Data:", error);
+    }
+  };
+
   // 바이럴 데이터 불러오기
   const getVirals = async () => {
     try {
       const url = `/traking/viral?${
-        userRole === "user" ? `marketerUid=${userId}&` : ""
+        selectedMarketer == ""
+          ? ""
+          : userRole == "system" || userRole == "admin"
+          ? `marketerUid=${selectedMarketer}&`
+          : `marketerUid=${userId}&`
       }year=${selectedYear}&month=${selectedMonth}`;
       const response = await axios.get(url);
       if (response.status === 200) {
@@ -144,27 +274,15 @@ const MediaTracking: React.FC = () => {
     }
   };
 
-  // 카드 수수료 합
-  const getCardSum = async () => {
-    try {
-      const url = `/traking/totalCard?${
-        userRole === "user" ? `marketerUid=${userId}&` : ""
-      }year=${selectedYear}&month=${selectedMonth}`;
-      const response = await axios.get(url);
-      setCardSum(response.data.body);
-    } catch (error: any) {
-      console.error(
-        "매체 데이터 불러오기 실패:",
-        error.response?.data?.result?.message
-      );
-    }
-  };
-
   // 카드 수수료 데이터 불러오기
   const getCards = async () => {
     try {
       const url = `/traking/card?${
-        userRole === "user" ? `marketerUid=${userId}&` : ""
+        selectedMarketer == ""
+          ? ""
+          : userRole == "system" || userRole == "admin"
+          ? `marketerUid=${selectedMarketer}&`
+          : `marketerUid=${userId}&`
       }&year=${selectedYear}&month=${selectedMonth}`;
       const response = await axios.get(url);
       if (response.status === 200) {
@@ -190,27 +308,16 @@ const MediaTracking: React.FC = () => {
       console.error("Failed to fetch SalesResults Data:", error);
     }
   };
-  // 엑셀 파일 (매체 테이블 리스트) 불러오기
-  const getExcelMedias = async () => {
-    try {
-      const url = `/traking/media?${
-        userRole === "user" ? `marketerUid=${userId}&` : ""
-      }year=${selectedYear}&month=${selectedMonth}`;
-      const response = await axios.get(url);
-      setExcelData(response.data.body);
-    } catch (error) {
-      console.error("Failed to fetch Uploaded Media Data:", error);
-    }
-  };
   //초기 데이터 로드
   useEffect(() => {
     const initializeData = async () => {
       await fetchUser();
       if (userRole && userId) {
-        getMediasSum();
-        getVirals();
-        getExcelMedias();
+        getMediaSum();
+        getViralSum();
         getCardSum();
+        getExcelMedias();
+        getVirals();
         getCards();
         getSalesResults();
       }
@@ -289,30 +396,22 @@ const MediaTracking: React.FC = () => {
     }
   };
 
+  // 마케터 필터 변경 처리
+  const handleMarketerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const marketerUid = e.target.value;
+    setSelectedMarketer(marketerUid);
+  };
+
   const getMediaColor = (media: string) => {
     // 매체별 색깔 지정
-    if (
-      media === "네이버" ||
-      media === "naver" ||
-      media === "nosp" ||
-      media === "네이버NOSP" ||
-      media === "gfa" ||
-      media === "네이버GFA"
-    )
+    if (media === "네이버" || media === "NOSP" || media === "GFA")
       return "#6aa84f";
-    else if (media === "다음" || media === "daum") return "#6d9eeb";
-    else if (media === "모먼트" || media === "moment") return "#e69138";
-    else if (media === "당근" || media === "carot") return "#ff9900";
-    else if (media === "구글" || media === "google") return "#4285f4";
-    else if (media === "바이럴" || media === "viral") return "#7f6000";
-    else if (
-      media === "카카오" ||
-      media === "카카오모먼트" ||
-      media === "kakao" ||
-      media === "momnet"
-    )
-      return "#e69138";
-    else return "black";
+    else if (media === "모먼트") return "#e69138";
+    else if (media === "당근") return "#ff9900";
+    else if (media === "구글") return "#4285f4";
+    else if (media === "바이럴") return "#7f6000";
+    else if (media === "카카오" || media === "모먼트") return "#e69138";
+    else return "#a0a0a0";
   };
 
   const handleFilterClick = (filter: string) => {
@@ -328,7 +427,11 @@ const MediaTracking: React.FC = () => {
       let url = `/traking/${
         table == "media" ? "media" : table == "viral" ? "viral" : "card"
       }?${
-        userRole === "user" ? `marketerUid=${userId}&` : ""
+        selectedMarketer == ""
+          ? ""
+          : userRole == "system" || userRole == "admin"
+          ? `marketerUid=${selectedMarketer}&`
+          : `marketerUid=${userId}&`
       }year=${selectedYear}&month=${selectedMonth}&sortField=${field}&sortOrder=${order}`;
       const response = await axios.get(url);
 
@@ -351,6 +454,40 @@ const MediaTracking: React.FC = () => {
     );
   };
 
+  const getAdjustedColumns = (tableType: "media" | "viral" | "card") => {
+    // 필드별 label 매핑 정의
+    const labelMappings: Record<
+      string,
+      Record<"media" | "viral" | "card", string>
+    > = {
+      clientId: {
+        media: "광고주ID",
+        viral: "순매출 합",
+        card: "충전비(VAT+)",
+      },
+      advCost: {
+        media: "광고비 (VAT-)",
+        viral: "순매출 계산",
+        card: "충전비(VAT-)",
+      },
+    };
+
+    // columns 배열 복사
+    const adjustedColumns = [...columns];
+
+    // label 수정
+    adjustedColumns.forEach((column) => {
+      if (
+        labelMappings[column.field] &&
+        labelMappings[column.field][tableType]
+      ) {
+        column.label = labelMappings[column.field][tableType];
+      }
+    });
+
+    return adjustedColumns;
+  };
+
   return (
     <div>
       {/* 필터 */}
@@ -371,6 +508,21 @@ const MediaTracking: React.FC = () => {
               </option>
             ))}
           </select>
+          {(userRole == "system" || userRole == "admin") && (
+            <>
+              <label>이름</label>
+              <select value={selectedMarketer} onChange={handleMarketerChange}>
+                <option value="" key="total" defaultValue="">
+                  전체
+                </option>
+                {marketerList.map((marketer: any) => (
+                  <option value={marketer.uid} key={marketer.uid}>
+                    {marketer.name}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
         </div>
         <div className={styles["divider-container"]}>
           <ul>
@@ -388,9 +540,9 @@ const MediaTracking: React.FC = () => {
       </div>
 
       {/* 세전 및 인센티브 테이블 */}
-      {userRole === "user" ? (
-        <div className="pr-3">
-          <h5>결과</h5>
+      <div className="pl-3 mt-3">
+        <h5>인센티브</h5>
+        {userRole === "user" ? (
           <div className="d-flex mt-3">
             <div className="col-3 pl-0 mb-3">
               <table className={`${styles["vertical-table"]} mb-2`}>
@@ -522,7 +674,7 @@ const MediaTracking: React.FC = () => {
                                 key === "finalAmount"
                                   ? "orange"
                                   : key === "sendAmount"
-                                  ? "#3282F6"
+                                  ? "#00ff00"
                                   : "",
                             }}
                           >
@@ -536,60 +688,152 @@ const MediaTracking: React.FC = () => {
               </table>
             </div>
           </div>
-        </div>
-      ) : (
-        <div>{/* 전체 매출, 지급수수료(+/-) 합 */}</div>
-      )}
+        ) : (
+          <div>
+            {/* 전체 매출, 지급수수료(+/-) 합 */}
+            <table
+              className={`${styles["totalSum-table"]} my-3 table-bordered`}
+            >
+              <thead>
+                <tr className="text-center">
+                  <th>구분</th>
+                  <th>담당자명</th>
+                  <th>충전비(VAT+)</th>
+                  <th>충전비(VAT-)</th>
+                  <th>광고비(VAT-) 합계</th>
+                  <th>지급수수료(VAT-) 합계</th>
+                  <th>지급수수료(VAT+) 합계</th>
+                  <th>페이백(액) 합계</th>
+                  <th>총 매출 합계</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[mediaSum, viralSum].map((item) => (
+                  <>
+                    <tr className="text-right">
+                      <td className="text-center">합계</td>
+                      <td className="text-center">-</td>
+                      <td className="text-center">-</td>
+                      <td className="text-center">-</td>
+                      <td>{item?.data?.totalAdvCost?.toLocaleString() || 0}</td>
+                      <td>
+                        {item?.data?.totalPayVatExclude?.toLocaleString() || 0}
+                      </td>
+                      <td>
+                        {item?.data?.totalPayVatInclude?.toLocaleString() || 0}
+                      </td>
+                      <td>
+                        {item?.data?.totalPaybackAmount?.toLocaleString() || 0}
+                      </td>
+                      <td>
+                        {item?.data?.grandTotalSum?.toLocaleString() || 0}
+                      </td>
+                    </tr>
+                    {/* 상세 데이터 행 */}
+                    {Array.isArray(item?.data?.details) &&
+                      item?.data?.details?.map(
+                        (detailItem: any, detailIndex: number) => (
+                          <tr key={detailIndex} className="text-right">
+                            <td className="text-center">{item?.type}</td>
+                            <td className="text-center">
+                              {detailItem.marketerUid}
+                            </td>
+                            <td className="text-center">-</td>
+                            <td className="text-center">-</td>
+                            <td>
+                              {detailItem.advCostSum?.toLocaleString() || 0}
+                            </td>
+                            <td>
+                              {detailItem.payVatExcludeSum?.toLocaleString() ||
+                                0}
+                            </td>
+                            <td>
+                              {detailItem.payVatIncludeSum?.toLocaleString() ||
+                                0}
+                            </td>
+                            <td>
+                              {detailItem.paybackAmountSum?.toLocaleString() ||
+                                0}
+                            </td>
+                            <td>
+                              {detailItem.totalSum?.toLocaleString() || 0}
+                            </td>
+                          </tr>
+                        )
+                      )}
+                  </>
+                ))}
 
-      {/* 매체 테이블 */}
-      {(activeFilter == "전체" || activeFilter == "매체") && (
+                <tr className="text-right">
+                    <td className="text-center">카드수수료</td>
+                    <td>-</td>
+                  <td>
+                    {cardSum?.totalChargeVatInclude?.toLocaleString() || 0}
+                  </td>
+                  <td>
+                    {cardSum?.totalChargeVatExclude?.toLocaleString() || 0}
+                  </td>
+                  <td className="text-center">-</td>
+                  <td>{cardSum?.totalPayVatInclude?.toLocaleString() || 0}</td>
+                  <td>{cardSum?.totalPayVatExclude?.toLocaleString() || 0}</td>
+                  <td className="text-center">-</td>
+                  <td className="text-center">-</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {(activeFilter == "전체" || activeFilter == "매체") && mediaSum && (
         <>
-          <div className="d-flex align-items-center ml-3 mb-3 mt-3">
-            <h5>매체 + 바이럴</h5>
-            <div className="d-flex ml-3">
-              <button
-                className={styles["btn"]}
-                onClick={() => {
-                  selectedMediaFiles.current?.click();
-                }}
-              >
-                파일 등록
-              </button>
-              <input
-                type="file"
-                id="fileInput"
-                accept=".xlsx, .xls"
-                ref={selectedMediaFiles}
-                style={{ display: "none" }}
-                onChange={handleMediaFileUpload}
-              />
-            </div>
+          <div className="d-flex ml-3 mb-3 mt-3">
+            <h5>매체</h5>
+            {(userRole === "system" || userRole === "admin") &&
+              activeFilter == "전체" && (
+                <div className="d-flex">
+                  <button
+                    className={styles["btn"]}
+                    onClick={() => {
+                      selectedMediaFiles.current?.click();
+                    }}
+                  >
+                    파일 등록
+                  </button>
+                  <input
+                    type="file"
+                    id="fileInput"
+                    accept=".xlsx, .xls"
+                    ref={selectedMediaFiles}
+                    style={{ display: "none" }}
+                    onChange={handleMediaFileUpload}
+                  />
+                </div>
+              )}
           </div>
           <table className={`${styles["horizontal-table"]} ml-3 mb-3`}>
             <thead>
               <tr className="text-center">
                 <th>년도/월</th>
-                {[
-                  { field: "marketerUid", label: "담당자ID" },
-                  { field: "marketerName", label: "담당자명" },
-                  { field: "media", label: "매체" },
-                  { field: "clientName", label: "광고주명" },
-                  { field: "clientId", label: "광고주ID" },
-                  { field: "advCost", label: "광고비 (VAT-)" },
-                  { field: "commissionRate", label: "수수료율" },
-                  { field: "payVatExclude", label: "지급수수료(VAT-)" },
-                  { field: "payVatInclude", label: "지급수수료(VAT+)" },
-                  { field: "paybackRate", label: "페이백(%)" },
-                  { field: "paybackAmount", label: "페이백(액)" },
-                  { field: "total", label: "매출합계" },
-                ].map((header) => (
-                  <th key={header.field} style={{ position: "relative" }}>
-                    <div className={styles["tooltip-container"]}>
+                {getAdjustedColumns("media").map((header, index) => (
+                  <th
+                    key={header.field}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, index)}
+                    onDrop={(e) => handleDrop(e, index)}
+                    onDragOver={handleDragOver}
+                    style={{
+                      position: "relative",
+                      cursor: "move",
+                      width: header.width,
+                    }}
+                  >
+                    <div
+                      className={styles["tooltip-container"]}
+                      onClick={() => toggleTooltip(header.field, "media")}
+                    >
                       <span>{header.label}</span>
-                      <FaSort
-                        onClick={() => toggleTooltip(header.field, "media")}
-                        style={{ cursor: "pointer", marginLeft: "8px" }}
-                      />
+                      <IoFilterSharp />
                       {tooltipOpen?.field === header.field &&
                         tooltipOpen?.table === "media" && (
                           <div className={styles["tooltip"]}>
@@ -617,290 +861,500 @@ const MediaTracking: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {mediaSum ? (
-                <>
-                  <tr
-                    className="text-center"
-                    style={{ backgroundColor: "#666666", color: "white" }}
-                  >
-                    <td>합계</td>
-                    <td>-</td>
-                    <td>-</td>
-                    <td>-</td>
-                    <td>-</td>
-                    <td>-</td>
-                    <td>{mediaSum.totalAdvCost?.toLocaleString() || 0}</td>
-                    <td>- %</td>
+              <tr
+                className="text-center"
+                style={{ backgroundColor: "#666666", color: "white" }}
+              >
+                <td>합계</td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td className="text-right">
+                  {mediaSum.data?.totalAdvCost?.toLocaleString() || 0}
+                </td>
+                <td className="text-right">- %</td>
+                <td className="text-right">
+                  {mediaSum.data?.totalPayVatExclude?.toLocaleString() || 0}
+                </td>
+                <td className="text-right">
+                  {mediaSum.data?.totalPayVatInclude?.toLocaleString() || 0}
+                </td>
+                <td className="text-right">- %</td>
+                <td className="text-right">
+                  {mediaSum.data?.totalPaybackAmount?.toLocaleString() || 0}
+                </td>
+                <td className="text-right">
+                  {mediaSum.data?.grandTotalSum?.toLocaleString() || 0}
+                </td>
+              </tr>
+              {excelData &&
+                Array.isArray(excelData) &&
+                excelData.map((item: IMediaViral, rowIndex) => (
+                  <tr key={rowIndex} className="text-center">
                     <td>
-                      {mediaSum.totalPayVatExclude?.toLocaleString() || 0}
+                      {item.monthDate
+                        ? dayjs(item.monthDate).format("YYYY년 MM월")
+                        : ""}
                     </td>
-                    <td>
-                      {mediaSum.totalPayVatInclude?.toLocaleString() || 0}
-                    </td>
-                    <td>- %</td>
-                    <td>
-                      {mediaSum.totalPaybackAmount?.toLocaleString() || 0}
-                    </td>
-                    <td>{mediaSum.grandTotalSum?.toLocaleString() || 0}</td>
-                  </tr>
-                  {Array.isArray(excelData) &&
-                    excelData.map((item: IMediaViral) => (
-                      <>
-                        <tr className="text-center">
-                          <td>
-                            {item.monthDate
-                              ? dayjs(item.monthDate).format("YYYY년 MM월")
-                              : ""}
-                          </td>
-                          <td>{item.marketerUid}</td>
-                          <td>{item.marketerName}</td>
-                          <td
-                            style={{
-                              backgroundColor: getMediaColor(item.media || ""),
-                            }}
-                          >
-                            {item.media || ""}
-                          </td>
-                          <td>{item.clientName || ""}</td>
-                          <td>{item.clientId || ""}</td>
-                          <td>{item.advCost?.toLocaleString() || 0}</td>
-                          <td>
-                            {item.commissionRate
-                              ? item.commissionRate.toFixed(2)
-                              : "0.00"}{" "}
-                            %
-                          </td>
-                          <td>{item.payVatExclude?.toLocaleString() || 0}</td>
-                          <td>{item.payVatInclude?.toLocaleString() || 0}</td>
-                          <td>
-                            {item.paybackRate
-                              ? item.paybackRate.toFixed(2)
-                              : "0.00"}{" "}
-                            %
-                          </td>
-                          <td>{item.paybackAmount?.toLocaleString() || 0}</td>
-                          <td>{item.total?.toLocaleString() || 0}</td>
-                        </tr>
-                      </>
+                    {columns.map((column) => (
+                      <td
+                        key={column.field}
+                        style={{
+                          backgroundColor:
+                            column.field === "media"
+                              ? getMediaColor(item.media || "")
+                              : "",
+                          color:
+                            Number(item.paybackRate) > 0
+                              ? !["total", "media"].includes(column.field)
+                                ? "#ff00ff"
+                                : "white"
+                              : "",
+                        }}
+                        className={
+                          [
+                            "marketerUid",
+                            "marketerName",
+                            "media",
+                            "clientName",
+                            "clientId",
+                          ].includes(column.field)
+                            ? "text-center"
+                            : "text-right"
+                        }
+                      >
+                        {(() => {
+                          switch (column.field) {
+                            case "marketerUid":
+                              return item.marketerUid || "-";
+                            case "marketerName":
+                              return item.marketerName || "-";
+                            case "media":
+                              return item.media || "-";
+                            case "clientName":
+                              return item.clientName || "-";
+                            case "clientId":
+                              return item.clientId || "-";
+                            case "advCost":
+                              return item.advCost?.toLocaleString() || 0;
+                            case "commissionRate":
+                              return `${
+                                item.commissionRate?.toFixed(2) || "0.00"
+                              } %`;
+                            case "payVatExclude":
+                              return item.payVatExclude?.toLocaleString() || 0;
+                            case "payVatInclude":
+                              return item.payVatInclude?.toLocaleString() || 0;
+                            case "paybackRate":
+                              return `${
+                                item.paybackRate?.toFixed(2) || "0.00"
+                              } %`;
+                            case "paybackAmount":
+                              return item.paybackAmount?.toLocaleString() || 0;
+                            case "total":
+                              return item.total?.toLocaleString() || 0;
+                            default:
+                              return "-";
+                          }
+                        })()}
+                      </td>
                     ))}
-                </>
-              ) : (
-                <tr>
-                  <td colSpan={11} className="text-center">
-                    데이터가 없습니다.
-                  </td>
-                </tr>
-              )}
+                  </tr>
+                ))}
             </tbody>
           </table>
         </>
       )}
 
-      {/* 바이럴 테이블 */}
-      {(activeFilter == "전체" || activeFilter == "바이럴") && (
-        <>
-          <table
-            style={{ backgroundColor: "transparent" }}
-            className={`${styles["horizontal-table"]} no-first-row-style mb-3 ml-3`}
-          >
-            <thead>
-              <tr>
-                <th>년도/월</th>
-                {[
-                  { field: "marketerUid", label: "담당자ID" },
-                  { field: "marketerName", label: "담당자명" },
-                  { field: "media", label: "매체" },
-                  { field: "clientName", label: "광고주명" },
-                  { field: "clientId", label: "광고주ID" },
-                  { field: "advCost", label: "광고비 (VAT-)" },
-                  { field: "commissionRate", label: "수수료율" },
-                  { field: "payVatExclude", label: "지급수수료(VAT-)" },
-                  { field: "payVatInclude", label: "지급수수료(VAT+)" },
-                ].map((header) => (
-                  <th key={header.field} style={{ position: "relative" }}>
-                    <div className={styles["tooltip-container"]}>
-                      <span>{header.label}</span>
-                      <FaSort
-                        onClick={() => toggleTooltip(header.field, "viral")}
-                        style={{ cursor: "pointer", marginLeft: "8px" }}
-                      />
-                      {tooltipOpen?.field === header.field &&
-                        tooltipOpen?.table === "viral" && (
-                          <div className={styles["tooltip"]}>
-                            <button
-                              onClick={() =>
-                                handleSort(header.field, "asc", "viral")
-                              }
-                              className={styles["tooltip-button"]}
-                            >
-                              오름차순
-                            </button>
-                            <button
-                              onClick={() =>
-                                handleSort(header.field, "desc", "viral")
-                              }
-                              className={styles["tooltip-button"]}
-                            >
-                              내림차순
-                            </button>
-                          </div>
-                        )}
-                    </div>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {Array.isArray(viralData) &&
-                viralData.map((item: IMediaViral) => (
-                  <>
-                    <tr className="text-center">
+      {(activeFilter == "전체" || activeFilter == "바이럴") &&
+        viralData?.length > 0 && (
+          <>
+            <h5 className="mt-3 mb-3 ml-3">바이럴</h5>
+            <table className={`${styles["horizontal-table"]} ml-3 mb-3`}>
+              <thead>
+                <tr className="text-center">
+                  <th>년도/월</th>
+                  {getAdjustedColumns("viral").map((header, index) => (
+                    <th
+                      key={header.field}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, index)}
+                      onDrop={(e) => handleDrop(e, index)}
+                      onDragOver={handleDragOver}
+                      style={{
+                        position: "relative",
+                        cursor: "move",
+                        width: header.width,
+                      }}
+                    >
+                      <div
+                        className={styles["tooltip-container"]}
+                        onClick={() => {
+                          if (
+                            !["paybackRate", "paybackAmount", "total"].includes(
+                              header.field
+                            )
+                          )
+                            toggleTooltip(header.field, "viral");
+                        }}
+                      >
+                        <span>{header.label}</span>
+                        {!["paybackRate", "paybackAmount", "total"].includes(
+                          header.field
+                        ) && <IoFilterSharp />}
+                        {tooltipOpen?.field === header.field &&
+                          tooltipOpen?.table === "viral" && (
+                            <div className={styles["tooltip"]}>
+                              <button
+                                onClick={() =>
+                                  handleSort(
+                                    header.field == "clientId"
+                                      ? "netSales"
+                                      : header.field,
+                                    "asc",
+                                    "viral"
+                                  )
+                                }
+                                className={styles["tooltip-button"]}
+                              >
+                                오름차순
+                              </button>
+                              <button
+                                onClick={() =>
+                                  handleSort(
+                                    header.field == "clientId"
+                                      ? "netSales"
+                                      : header.field,
+                                    "desc",
+                                    "viral"
+                                  )
+                                }
+                                className={styles["tooltip-button"]}
+                              >
+                                내림차순
+                              </button>
+                            </div>
+                          )}
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>합계</td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                  <td className="text-right">
+                    {viralSum?.data.totalAdvCost?.toLocaleString() || 0}
+                  </td>
+                  <td className="text-right">- %</td>
+                  <td className="text-right">
+                    {viralSum?.data.totalPayVatExclude?.toLocaleString()}
+                  </td>
+                  <td className="text-right">
+                    {viralSum?.data.totalPayVatInclude?.toLocaleString()}
+                  </td>
+                  <td className="text-right"></td>
+                  <td className="text-right">
+                    {viralSum?.data.totalPaybackAmount || ""}
+                  </td>
+                  <td className="text-right">
+                    {viralSum?.data.grandTotalSum || ""}
+                  </td>
+                </tr>
+                {viralData &&
+                  Array.isArray(viralData) &&
+                  viralData.map((item: IMediaViral, rowIndex) => (
+                    <tr key={rowIndex}>
                       <td>
                         {item.monthDate
                           ? dayjs(item.monthDate).format("YYYY년 MM월")
                           : ""}
                       </td>
-                      <td>{item.marketerUid}</td>
-                      <td>{item.marketerName}</td>
-                      <td
-                        style={{
-                          backgroundColor: getMediaColor(item.media || ""),
+                      {columns.map((column) => (
+                        <td
+                          key={column.field}
+                          style={
+                            column.field === "media"
+                              ? {
+                                  backgroundColor: getMediaColor(
+                                    item.media || ""
+                                  ),
+                                }
+                              : undefined
+                          }
+                          className={
+                            [
+                              "marketerUid",
+                              "marketerName",
+                              "media",
+                              "clientName",
+                            ].includes(column.field)
+                              ? "text-center"
+                              : "text-right"
+                          }
+                        >
+                          {(() => {
+                            switch (column.field) {
+                              case "marketerUid":
+                                return item.marketerUid || "-";
+                              case "marketerName":
+                                return item.marketerName || "-";
+                              case "media":
+                                return item.media || "";
+                              case "clientName":
+                                return item.clientName || "-";
+                              case "clientId":
+                                return item.netSales?.toLocaleString() || 0;
+                              case "advCost":
+                                return item.advCost?.toLocaleString() || 0;
+                              case "commissionRate":
+                                return `${
+                                  item.commissionRate?.toFixed(2) || "0.00"
+                                } %`;
+                              case "payVatExclude":
+                                return (
+                                  item.payVatExclude?.toLocaleString() || 0
+                                );
+                              case "payVatInclude":
+                                return (
+                                  item.payVatInclude?.toLocaleString() || 0
+                                );
+                              case "paybackRate":
+                                return item.paybackRate
+                                  ? `${
+                                      item.paybackRate?.toFixed(2) || "0.00"
+                                    } %`
+                                  : "";
+                              case "paybackAmount":
+                                return item.paybackAmount
+                                  ? item.paybackAmount?.toLocaleString() || 0
+                                  : "";
+                              case "total":
+                                return item.total
+                                  ? item.total?.toLocaleString() || 0
+                                  : "";
+                              default:
+                                return "-";
+                            }
+                          })()}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </>
+        )}
+
+      {(activeFilter === "전체" || activeFilter === "카드수수료") &&
+        cardSum && (
+          <>
+            <div className="mb-3 ml-3">
+              <h5>카드 수수료</h5>
+            </div>
+            <table className={`${styles["horizontal-table"]} ml-3 mb-3`}>
+              <thead>
+                <tr className="text-center">
+                  <th>년도/월</th>
+                  {getAdjustedColumns("card").map((header, index) => (
+                    <th
+                      key={header.field}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, index)}
+                      onDrop={(e) => handleDrop(e, index)}
+                      onDragOver={handleDragOver}
+                      style={{
+                        position: "relative",
+                        cursor: "move",
+                        width: header.width,
+                      }}
+                    >
+                      <div
+                        className={styles["tooltip-container"]}
+                        onClick={() => {
+                          if (
+                            ![
+                              "paybackRate",
+                              "paybackAmount",
+                              "total",
+                              "clientName",
+                            ].includes(header.field)
+                          ) {
+                            toggleTooltip(header.field, "card");
+                          }
                         }}
                       >
-                        {item.media || ""}
-                      </td>
-                      <td>{item.clientName || ""}</td>
-                      <td>{item.clientId || ""}</td>
-                      <td>{item.advCost?.toLocaleString() || 0}</td>
-                      <td>
-                        {item.commissionRate
-                          ? item.commissionRate.toFixed(2)
-                          : "0.00"}{" "}
-                        %
-                      </td>
-                      <td>{item.payVatExclude?.toLocaleString() || 0}</td>
-                      <td>{item.payVatInclude?.toLocaleString() || 0}</td>
-                    </tr>
-                  </>
-                ))}
-            </tbody>
-          </table>
-        </>
-      )}
-
-      {/* 카드수수료 테이블 */}
-      {(activeFilter === "전체" || activeFilter === "카드수수료") && (
-        <>
-          <div className="d-flex align-items-center mb-3 ml-3">
-            <h5>카드 수수료</h5>
-          </div>
-          <table className={`${styles["horizontal-table"]} ml-3 mb-3`}>
-            <thead>
-              <tr className="text-center">
-                <th>년도/월</th>
-                {[
-                  { field: "marketerUid", label: "담당자ID" },
-                  { field: "marketerName", label: "담당자명" },
-                  { field: "media", label: "매체" },
-                  { field: "chargeVatExclude", label: "충전비(VAT-)" },
-                  { field: "chargeVatInclude", label: "충전비(VAT+)" },
-                  { field: "commissionRate", label: "수수료율" },
-                  { field: "payVatExclude", label: "지급수수료(VAT-)" },
-                  { field: "payVatInclude", label: "지급수수료(VAT+)" },
-                ].map((header) => (
-                  <th key={header.field} style={{ position: "relative" }}>
-                    <div className={styles["tooltip-container"]}>
-                      <span>{header.label}</span>
-                      <FaSort
-                        onClick={() => toggleTooltip(header.field, "card")}
-                        style={{ cursor: "pointer", marginLeft: "8px" }}
-                      />
-                      {tooltipOpen?.field === header.field &&
-                        tooltipOpen?.table === "card" && (
-                          <div className={styles["tooltip"]}>
-                            <button
-                              onClick={() =>
-                                handleSort(header.field, "asc", "card")
-                              }
-                              className={styles["tooltip-button"]}
-                            >
-                              오름차순
-                            </button>
-                            <button
-                              onClick={() =>
-                                handleSort(header.field, "desc", "card")
-                              }
-                              className={styles["tooltip-button"]}
-                            >
-                              내림차순
-                            </button>
-                          </div>
-                        )}
-                    </div>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {cardSum ? (
-                <>
-                  <tr
-                    className="text-center"
-                    style={{ backgroundColor: "#666666", color: "white" }}
-                  >
-                    <td>합계</td>
-                    <td>-</td>
-                    <td>-</td>
-                    <td>-</td>
-                    <td>
-                      {cardSum.totalChargeVatExclude?.toLocaleString() || 0}
-                    </td>
-                    <td>{cardSum.totalPayVatInclude?.toLocaleString() || 0}</td>
-                    <td>- %</td>
-                    <td>{cardSum.totalPayVatExclude?.toLocaleString() || 0}</td>
-                    <td>{cardSum.totalPayVatInclude?.toLocaleString() || 0}</td>
-                  </tr>
-                  {Array.isArray(cardData) &&
-                    cardData.map((item: ICard) => (
-                      <>
-                        <tr className="text-center">
-                          <td>
-                            {item.monthDate
-                              ? dayjs(item.monthDate).format("YYYY년 MM월")
-                              : ""}
-                          </td>
-                          <td>{item.marketerUid}</td>
-                          <td>{item.marketerName}</td>
-                          <td
-                            style={{
-                              backgroundColor: getMediaColor(item.media || ""),
-                            }}
-                          >
-                            {mediaLabels[item?.media || ""]}
-                          </td>
-                          <td>{item.chargeVatInclude?.toLocaleString()}</td>
-                          <td>{item.chargeVatExclude?.toLocaleString()}</td>
-                          <td>
-                            {item.commissionRate
-                              ? item.commissionRate.toFixed(2)
-                              : "0.00"}{" "}
-                            %
-                          </td>
-                          <td>{item.payVatExclude?.toLocaleString()}</td>
-                          <td>{item.payVatInclude?.toLocaleString()}</td>
-                        </tr>
-                      </>
-                    ))}
-                </>
-              ) : (
-                <tr className="text-center text-secondary">
-                  <td colSpan={7}>데이터가 없습니다.</td>
+                        <span>{header.label}</span>
+                        {![
+                          "paybackRate",
+                          "paybackAmount",
+                          "total",
+                          "clientName",
+                        ].includes(header.field) && <IoFilterSharp />}
+                        {tooltipOpen?.field === header.field &&
+                          tooltipOpen?.table === "card" && (
+                            <div className={styles["tooltip"]}>
+                              <button
+                                onClick={() =>
+                                  handleSort(
+                                    header.field == "clientId"
+                                      ? "chargeVatInclude"
+                                      : header.field == "advCost"
+                                      ? "chargeVatExclude"
+                                      : header.field,
+                                    "asc",
+                                    "card"
+                                  )
+                                }
+                                className={styles["tooltip-button"]}
+                              >
+                                오름차순
+                              </button>
+                              <button
+                                onClick={() =>
+                                  handleSort(
+                                    header.field == "clientId"
+                                      ? "chargeVatInclude"
+                                      : header.field == "advCost"
+                                      ? "chargeVatExclude"
+                                      : header.field,
+                                    "desc",
+                                    "card"
+                                  )
+                                }
+                                className={styles["tooltip-button"]}
+                              >
+                                내림차순
+                              </button>
+                            </div>
+                          )}
+                      </div>
+                    </th>
+                  ))}
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </>
-      )}
+              </thead>
+              <tbody>
+                <tr
+                  className="text-center"
+                  style={{ backgroundColor: "#666666", color: "white" }}
+                >
+                  <td>합계</td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                  <td className="text-right">
+                    {cardSum.totalChargeVatInclude?.toLocaleString() || 0}
+                  </td>
+                  <td className="text-right">
+                    {cardSum.totalChargeVatExclude?.toLocaleString() || 0}
+                  </td>
+                  <td className="text-right">- %</td>
+                  <td className="text-right">
+                    {cardSum.totalPayVatExclude?.toLocaleString() || 0}
+                  </td>
+                  <td className="text-right">
+                    {cardSum.totalPayVatInclude?.toLocaleString() || 0}
+                  </td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                </tr>
+                {cardData &&
+                  Array.isArray(cardData) &&
+                  cardData.map((item: ICard, rowIndex) => (
+                    <tr key={rowIndex} className="text-center">
+                      <td>
+                        {item.monthDate
+                          ? dayjs(item.monthDate).format("YYYY년 MM월")
+                          : ""}
+                      </td>
+                      {columns.map((column) => (
+                        <td
+                          key={column.field}
+                          style={
+                            column.field === "media"
+                              ? {
+                                  backgroundColor: getMediaColor(
+                                    item.media || ""
+                                  ),
+                                }
+                              : undefined
+                          }
+                          className={
+                            [
+                              "marketerUid",
+                              "marketerName",
+                              "media",
+                              "clientName",
+                            ].includes(column.field)
+                              ? "text-center"
+                              : "text-right"
+                          }
+                        >
+                          {(() => {
+                            switch (column.field) {
+                              case "marketerUid":
+                                return item.marketerUid || "-";
+                              case "marketerName":
+                                return item.marketerName || "-";
+                              case "media":
+                                return item.media || "";
+                              case "clientName":
+                                return "";
+                              case "clientId":
+                                return (
+                                  item.chargeVatInclude?.toLocaleString() || 0
+                                );
+                              case "advCost":
+                                return (
+                                  item.chargeVatExclude?.toLocaleString() || 0
+                                );
+                              case "commissionRate":
+                                return `${
+                                  item.commissionRate?.toFixed(2) || "0.00"
+                                } %`;
+                              case "payVatExclude":
+                                return (
+                                  item.payVatExclude?.toLocaleString() || "0"
+                                );
+                              case "payVatInclude":
+                                return (
+                                  item.payVatInclude?.toLocaleString() || "0"
+                                );
+                              case "paybackRate":
+                                return item.paybackRate
+                                  ? `${
+                                      item.paybackRate?.toFixed(2) || "0.00"
+                                    } %`
+                                  : "";
+                              case "paybackAmount":
+                                return item.paybackAmount
+                                  ? item.paybackAmount?.toLocaleString() || "0"
+                                  : "";
+                              case "total":
+                                return item.total
+                                  ? item.total?.toLocaleString() || "0"
+                                  : "";
+                              default:
+                                return "-";
+                            }
+                          })()}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </>
+        )}
 
       {/* 미지정 데이터 모달 */}
       {/* {showModal && unmappedAccounts.length > 0 && (

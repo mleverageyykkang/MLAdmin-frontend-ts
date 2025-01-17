@@ -8,7 +8,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "providers/authProvider";
 import ICharge from "../../common/models/charge/ICharge";
-import depositStyles from "./Deposit.module.scss";
+import styles from "./Deposit.module.scss";
 import DeleteModal from "./DeleteModal";
 
 interface User {
@@ -91,34 +91,90 @@ const Deposit: React.FC = () => {
   const [copyRow, setCopyRow] = useState<Partial<IDeposit> | null>(null);
 
   const [columns, setColumns] = useState([
-    { id: "progressDate", label: "진행일자", accessor: "progressDate" },
-    { id: "company", label: "업체명", accessor: "company" },
-    { id: "depositor", label: "입금자명", accessor: "depositor" },
-    { id: "depositDate", label: "입금일", accessor: "depositDate" },
-    { id: "taxInvoice", label: "세금계산서", accessor: "taxInvoice" },
-    { id: "depositAmount", label: "입금금액", accessor: "depositAmount" },
+    {
+      id: "progressDate",
+      label: "진행일자",
+      group: "deposit",
+      accessor: "progressDate",
+    },
+    { id: "company", label: "업체명", group: "deposit", accessor: "company" },
+    {
+      id: "depositor",
+      label: "입금자명",
+      group: "deposit",
+      accessor: "depositor",
+    },
+    {
+      id: "depositDate",
+      label: "입금일",
+      group: "deposit",
+      accessor: "depositDate",
+    },
+    {
+      id: "taxInvoice",
+      label: "세금계산서",
+      group: "deposit",
+      accessor: "taxInvoice",
+    },
+    {
+      id: "depositAmount",
+      label: "입금금액",
+      group: "deposit",
+      accessor: "depositAmount",
+    },
+    {
+      id: "deductAmount",
+      label: "차감 금액",
+      group: "deposit",
+      accessor: "deductAmount",
+    },
+    {
+      id: "paymentType",
+      label: "결제방식",
+      group: "deposit",
+      accessor: "paymentType",
+    },
+    {
+      id: "processType",
+      label: "처리방식",
+      group: "deposit",
+      accessor: "processType",
+    },
     {
       id: "rechargeableAmount",
       label: "사용 가능 금액",
+      group: "recharge",
       accessor: "rechargeableAmount",
     },
-    { id: "deductAmount", label: "차감 금액", accessor: "deductAmount" },
-    { id: "paymentType", label: "결제방식", accessor: "paymentType" },
-    { id: "processType", label: "처리방식", accessor: "processType" },
 
     // charges 내부 속성 추가
-    { id: "naver", label: "네이버", accessor: "naverSum" },
-    { id: "gfa", label: "네이버GFA", accessor: "gfaSum" },
-    { id: "kakao", label: "카카오", accessor: "kakaoSum" },
-    { id: "moment", label: "카카오모먼트", accessor: "momentSum" },
-    { id: "google", label: "구글", accessor: "googleSum" },
-    { id: "carot", label: "당근", accessor: "carotSum" },
-    { id: "nosp", label: "네이버NOSP", accessor: "nospSum" },
-    { id: "meta", label: "메타", accessor: "metaSum" },
-    { id: "dable", label: "데이블", accessor: "dableSum" },
-    { id: "remitPay", label: "송금/결제", accessor: "remitPaySum" },
-    { id: "netSales", label: "순매출", accessor: "netSalesSum" },
-    { id: "note", label: "비고", accessor: "charges.note" },
+    { id: "naver", label: "네이버", group: "charge", accessor: "naverSum" },
+    { id: "gfa", label: "네이버GFA", group: "charge", accessor: "gfaSum" },
+    { id: "kakao", label: "카카오", group: "charge", accessor: "kakaoSum" },
+    {
+      id: "moment",
+      label: "카카오모먼트",
+      group: "charge",
+      accessor: "momentSum",
+    },
+    { id: "google", label: "구글", group: "charge", accessor: "googleSum" },
+    { id: "carot", label: "당근", group: "charge", accessor: "carotSum" },
+    { id: "nosp", label: "네이버NOSP", group: "charge", accessor: "nospSum" },
+    { id: "meta", label: "메타", group: "charge", accessor: "metaSum" },
+    { id: "dable", label: "데이블", group: "charge", accessor: "dableSum" },
+    {
+      id: "remitPay",
+      label: "송금/결제",
+      group: "charge",
+      accessor: "remitPaySum",
+    },
+    {
+      id: "netSales",
+      label: "순매출",
+      group: "charge",
+      accessor: "netSalesSum",
+    },
+    { id: "note", label: "비고", group: "charge", accessor: "charges.note" },
   ]);
 
   // HTML5 드래그앤드롭 방식 : Handle drag start
@@ -133,7 +189,12 @@ const Deposit: React.FC = () => {
 
   // HTML5 드래그앤드롭 방식 : Handle drop
   const handleDrop = (index: number) => {
-    if (draggedColumnIndex === null || draggedColumnIndex === index) return;
+    if (
+      draggedColumnIndex === null ||
+      draggedColumnIndex === index ||
+      columns[draggedColumnIndex].group !== columns[index].group
+    )
+      return;
 
     const newColumns = [...columns];
     const [draggedColumn] = newColumns.splice(draggedColumnIndex, 1);
@@ -846,54 +907,43 @@ const Deposit: React.FC = () => {
   return (
     <div>
       {/* 필터 */}
-      <div className="mb-4">
-        <label className="mr-2">기간</label>
-        <select
-          value={selectedYear}
-          onChange={handleYearChange}
-          className="mr-2"
-        >
-          {years.map((year) => (
-            <option key={year} value={year}>
-              {year}년
-            </option>
-          ))}
-        </select>
-        <select
-          value={selectedMonth}
-          onChange={handleMonthChange}
-          className="mr-2"
-        >
-          {months.map((month) => (
-            <option key={month} value={month}>
-              {month}월
-            </option>
-          ))}
-        </select>
-        {(userRole == "system" || userRole == "admin") && (
-          <>
-            <label className="mr-2">이름:</label>
-            <select
-              className="mr-2"
-              value={selectedMarketer}
-              onChange={handleMarketerChange}
-            >
-              {marketerList.map((marketer: any, index) => (
-                <option
-                  key={marketer.uid}
-                  value={marketer.uid}
-                  selected={index === 0}
-                >
-                  {marketer.name}
+      <div className={styles["filter-container"]}>
+        <div>
+          <label>기간</label>
+          <select value={selectedYear} onChange={handleYearChange}>
+            {years.map((year) => (
+              <option value={year} key={year}>
+                {year}년
+              </option>
+            ))}
+          </select>
+          <select value={selectedMonth} onChange={handleMonthChange}>
+            {months.map((month) => (
+              <option value={month} key={month}>
+                {month}월
+              </option>
+            ))}
+          </select>
+          {(userRole == "system" || userRole == "admin") && (
+            <>
+              <label>이름</label>
+              <select value={selectedMarketer} onChange={handleMarketerChange}>
+                <option value="" key="total" defaultValue="">
+                  전체
                 </option>
-              ))}
-            </select>
-          </>
-        )}
+                {marketerList.map((marketer: any) => (
+                  <option value={marketer.uid} key={marketer.uid}>
+                    {marketer.name}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
+        </div>
       </div>
 
       {/* 입금 테이블 */}
-      <div className="mb-3 d-flex justify-content-between align-items-center">
+      <div className="mb-3 px-3 mt-3 d-flex justify-content-between align-items-center">
         <h5>입금</h5>
         <div>
           {selectedRow ? (
@@ -926,7 +976,7 @@ const Deposit: React.FC = () => {
           </button>
         </div>
       </div>
-      <div className="table-full-width px-0 table-responsive">
+      <div className="table-full-width px-0 table-responsive px-3">
         <table className="table" style={{ fontSize: ".875em" }}>
           <thead>
             <tr className="text-nowrap text-center">
@@ -1117,7 +1167,7 @@ const Deposit: React.FC = () => {
       </div>
 
       {/* 충전 테이블 */}
-      <div className="d-flex justify-content-between my-3">
+      <div className="d-flex justify-content-between my-3 px-3">
         <div>
           <h5>
             충전 - 사용가능금액 :{" "}
@@ -1180,7 +1230,7 @@ const Deposit: React.FC = () => {
           </div>
         )}
       </div>
-      <div className="table-full-width px-0 table-responsive border-bottom pb-3">
+      <div className="table-full-width px-0 table-responsive border-bottom pb-2 px-3">
         <table className="table" style={{ fontSize: ".875em" }}>
           <thead>
             <tr className="text-nowrap text-center">
@@ -1387,7 +1437,7 @@ const Deposit: React.FC = () => {
       </div>
 
       {/* 리스트 테이블 */}
-      <div className="d-flex justify-content-between my-4">
+      <div className="d-flex justify-content-between my-4 mx-3">
         <h5> 리스트 </h5>
         <div className="align-items-center d-flex">
           <button className="btn btn-danger mr-2" onClick={handleDeleteClick}>
@@ -1410,8 +1460,8 @@ const Deposit: React.FC = () => {
         </div>
       </div>
       <div
-        className={`${depositStyles.depositTable} table-full-width px-0 table-responsive`}
-        style={{ overflow: "auto", maxHeight: "740px" }}
+        className={`${styles.depositTable} table-full-width px-3 table-responsive`}
+        style={{ overflow: "auto", maxHeight: "750px" }}
       >
         <table className="table table-bordered">
           <thead>
