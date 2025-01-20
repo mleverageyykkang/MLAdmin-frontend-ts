@@ -2,6 +2,8 @@ import React from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import "./Sidebar.scss";
 import logo from "../../assets/img/ml_logo_sm.png";
+import { GoPeople,  } from "react-icons/go";
+
 
 function Sidebar({ routes }: { routes: any[] }) {
   const location = useLocation();
