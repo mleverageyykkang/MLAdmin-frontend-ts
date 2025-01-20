@@ -1,19 +1,25 @@
 import React from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import "./Sidebar.scss";
-import logo from "../../assets/img/ml_logo.png";
+import logo from "../../assets/img/ml_logo_sm.png";
 
 function Sidebar({ routes }: { routes: any[] }) {
   const location = useLocation();
   return (
     <div className="sidebar">
       <div className="sidebar-header">
-        <NavLink to="/dashboard">
-          <img
-            src={logo}
-            className="sidebar-logo"
-            alt="marketing leverage logo"
-          />
+        <NavLink to="/dashboard" className="sidebar-textlink">
+          <div className="sidebar-logo-container">
+            <img
+              src={logo}
+              className="sidebar-logo"
+              alt="marketing leverage logo"
+            />
+            <div className="sidebar-text">
+              <span className="sidebar-text-line">Marketing</span>
+              <span className="sidebar-text-line">Leverage</span>
+            </div>
+          </div>
         </NavLink>
       </div>
       <nav className="sidebar-nav">
@@ -50,6 +56,7 @@ function Sidebar({ routes }: { routes: any[] }) {
           return (
             <div key={index} className="sidebar-item">
               <NavLink to={`${route.path}`} className="sidebar-link">
+                {route.icon && <route.icon className="sidebar-icon" />}
                 {route.name}
               </NavLink>
             </div>

@@ -1,6 +1,7 @@
 .vertical-table, .horizontal-table, .totalSum-table{
-    border: 1px solid lightgrey;
+    // border: 1px solid lightgrey;
     font-size: 0.875em;
+    border-radius: 10px;
 }
 
 .vertical-table{
@@ -74,15 +75,21 @@ h5{
   .horizontal-table:first-of-type td:last-child{
     color:#00ff00 !important;
   }
+
+  .container{
+    background-color: white;
+    padding: 0.75rem;
+    border-radius: 10px;
+  }
   
   
 .filter-container {
   display: flex;
   align-items: center;
   padding: 1rem;
-  border-bottom: 1px solid #e9e9e9;
+  border-bottom: 1px dotted #e9e9e9;
   border-top: 1px solid #e9e9e9;
-  background-color: #f9f9f9;
+  background-color: #f2f5fa;
 
   label {
     font-size: 1rem;

@@ -47,7 +47,7 @@ const MediaTracking: React.FC = () => {
   const [salesResult, setSalesResult] = useState<ISalesResult[]>([]);
   const [unmappedAccounts, setUnmappedAccounts] = useState<IMediaViral[]>([]);
   const [showModal, setShowModal] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<string>("전체");
+  const [activeFilter, setActiveFilter] = useState<string>("합계");
   const [tooltipOpen, setTooltipOpen] = useState<{
     table: string;
     field: string;
@@ -526,7 +526,7 @@ const MediaTracking: React.FC = () => {
         </div>
         <div className={styles["divider-container"]}>
           <ul>
-            {["전체", "매체", "바이럴", "카드수수료"].map((filter) => (
+            {["합계", "매체", "바이럴", "카드수수료"].map((filter) => (
               <li
                 key={filter}
                 className={activeFilter === filter ? styles["active"] : ""}
@@ -540,435 +540,456 @@ const MediaTracking: React.FC = () => {
       </div>
 
       {/* 세전 및 인센티브 테이블 */}
-      <div className="pl-3 mt-3">
-        <h5>인센티브</h5>
-        {userRole === "user" ? (
-          <div className="d-flex mt-3">
-            <div className="col-3 pl-0 mb-3">
-              <table className={`${styles["vertical-table"]} mb-2`}>
-                {salesResult.map((item, index) => (
-                  <tbody key={index}>
-                    {Object.entries(item.preTax || {}).map(([key, value]) => (
-                      <tr key={key}>
-                        <td
-                          className="w-50"
-                          style={{
-                            backgroundColor:
-                              key === "deductSum" ? "#ffc000" : "#434343",
-                            color: "white",
-                          }}
-                        >
-                          {labels[key]}
-                        </td>
-                        <td className="text-right">
-                          {Number(value)?.toLocaleString()}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                ))}
-              </table>
-              <table className={styles["vertical-table"]}>
-                {salesResult.map((item, index) => (
-                  <tbody key={index}>
-                    {Object.entries(item.incentiveCalculation || {}).map(
-                      ([key, value]) => (
+      <div className="px-3 mt-3">
+        <h5 className="mb-2">{`${selectedMonth}월 정산`}</h5>
+        <div className={styles["container"]}>
+          {userRole === "user" ? (
+            <div className="d-flex ">
+              <div className="col-3 pl-0 mb-3">
+                <table className={`${styles["vertical-table"]} mb-2`}>
+                  {salesResult.map((item, index) => (
+                    <tbody key={index}>
+                      {Object.entries(item.preTax || {}).map(([key, value]) => (
                         <tr key={key}>
                           <td
                             className="w-50"
                             style={{
                               backgroundColor:
-                                key === "incentive" || key === "incenctiveRate"
-                                  ? "#434343"
-                                  : "#38761d",
+                                key === "deductSum" ? "#ffc000" : "#434343",
                               color: "white",
-                              fontWeight:
-                                key === "incentive" || key === "incenctiveRate"
-                                  ? "normal"
-                                  : "bold",
-                              display:
-                                value === 0 &&
-                                key !== "incentive" &&
-                                key !== "incenctiveRate"
-                                  ? "none"
-                                  : "",
                             }}
                           >
                             {labels[key]}
                           </td>
-                          <td
-                            className={`
+                          <td className="text-right">
+                            {Number(value)?.toLocaleString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  ))}
+                </table>
+                <table className={styles["vertical-table"]}>
+                  {salesResult.map((item, index) => (
+                    <tbody key={index}>
+                      {Object.entries(item.incentiveCalculation || {}).map(
+                        ([key, value]) => (
+                          <tr key={key}>
+                            <td
+                              className="w-50"
+                              style={{
+                                backgroundColor:
+                                  key === "incentive" ||
+                                  key === "incenctiveRate"
+                                    ? "#434343"
+                                    : "#38761d",
+                                color: "white",
+                                fontWeight:
+                                  key === "incentive" ||
+                                  key === "incenctiveRate"
+                                    ? "normal"
+                                    : "bold",
+                                display:
+                                  value === 0 &&
+                                  key !== "incentive" &&
+                                  key !== "incenctiveRate"
+                                    ? "none"
+                                    : "",
+                              }}
+                            >
+                              {labels[key]}
+                            </td>
+                            <td
+                              className={`
                           ${
                             key === "incenctiveRate" ? "text-danger" : ""
                           } text-right`}
-                            style={
-                              key !== "incentive" && key !== "incenctiveRate"
-                                ? { display: value === 0 ? "none" : "" }
-                                : undefined
-                            }
-                          >
-                            {Number(value)?.toLocaleString()}
-                            {key === "incenctiveRate" ||
-                            key === "mentorAccProp" ||
-                            key === "mentorPayProp"
-                              ? " %"
-                              : ""}
-                          </td>
-                        </tr>
-                      )
-                    )}
-                  </tbody>
-                ))}
-              </table>
-            </div>
-
-            <div className="col-3">
-              <table className={`${styles["vertical-table"]} mb-2`}>
-                {salesResult.map((item, index) => (
-                  <tbody key={index}>
-                    {Object.entries(item.preTaxSalary || {}).map(
-                      ([key, value]) => (
-                        <tr key={key}>
-                          <td
-                            className="w-50"
-                            style={{
-                              backgroundColor: "#454545",
-                              color: "white",
-                            }}
-                          >
-                            {labels[key]}
-                          </td>
-                          <td
-                            className="text-right"
-                            style={{
-                              color: key === "finalIncentive" ? "orange" : "",
-                            }}
-                          >
-                            {Number(value)?.toLocaleString()}
-                          </td>
-                        </tr>
-                      )
-                    )}
-                  </tbody>
-                ))}
-              </table>
-              <table className={styles["vertical-table"]}>
-                {salesResult.map((item, index) => (
-                  <tbody key={index}>
-                    {Object.entries(item.afterTaxIncentive || {}).map(
-                      ([key, value]) => (
-                        <tr key={key}>
-                          <td
-                            className="w-50"
-                            style={{
-                              backgroundColor: "#454545",
-                              color: "white",
-                            }}
-                          >
-                            {labels[key]}
-                          </td>
-                          <td
-                            className="text-right"
-                            style={{
-                              color:
-                                key === "finalAmount"
-                                  ? "orange"
-                                  : key === "sendAmount"
-                                  ? "#00ff00"
-                                  : "",
-                            }}
-                          >
-                            {Number(value)?.toLocaleString()}
-                          </td>
-                        </tr>
-                      )
-                    )}
-                  </tbody>
-                ))}
-              </table>
-            </div>
-          </div>
-        ) : (
-          <div>
-            {/* 전체 매출, 지급수수료(+/-) 합 */}
-            <table
-              className={`${styles["totalSum-table"]} my-3 table-bordered`}
-            >
-              <thead>
-                <tr className="text-center">
-                  <th>구분</th>
-                  <th>담당자명</th>
-                  <th>충전비(VAT+)</th>
-                  <th>충전비(VAT-)</th>
-                  <th>광고비(VAT-) 합계</th>
-                  <th>지급수수료(VAT-) 합계</th>
-                  <th>지급수수료(VAT+) 합계</th>
-                  <th>페이백(액) 합계</th>
-                  <th>총 매출 합계</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[mediaSum, viralSum].map((item) => (
-                  <>
-                    <tr className="text-right">
-                      <td className="text-center">합계</td>
-                      <td className="text-center">-</td>
-                      <td className="text-center">-</td>
-                      <td className="text-center">-</td>
-                      <td>{item?.data?.totalAdvCost?.toLocaleString() || 0}</td>
-                      <td>
-                        {item?.data?.totalPayVatExclude?.toLocaleString() || 0}
-                      </td>
-                      <td>
-                        {item?.data?.totalPayVatInclude?.toLocaleString() || 0}
-                      </td>
-                      <td>
-                        {item?.data?.totalPaybackAmount?.toLocaleString() || 0}
-                      </td>
-                      <td>
-                        {item?.data?.grandTotalSum?.toLocaleString() || 0}
-                      </td>
-                    </tr>
-                    {/* 상세 데이터 행 */}
-                    {Array.isArray(item?.data?.details) &&
-                      item?.data?.details?.map(
-                        (detailItem: any, detailIndex: number) => (
-                          <tr key={detailIndex} className="text-right">
-                            <td className="text-center">{item?.type}</td>
-                            <td className="text-center">
-                              {detailItem.marketerUid}
-                            </td>
-                            <td className="text-center">-</td>
-                            <td className="text-center">-</td>
-                            <td>
-                              {detailItem.advCostSum?.toLocaleString() || 0}
-                            </td>
-                            <td>
-                              {detailItem.payVatExcludeSum?.toLocaleString() ||
-                                0}
-                            </td>
-                            <td>
-                              {detailItem.payVatIncludeSum?.toLocaleString() ||
-                                0}
-                            </td>
-                            <td>
-                              {detailItem.paybackAmountSum?.toLocaleString() ||
-                                0}
-                            </td>
-                            <td>
-                              {detailItem.totalSum?.toLocaleString() || 0}
+                              style={
+                                key !== "incentive" && key !== "incenctiveRate"
+                                  ? { display: value === 0 ? "none" : "" }
+                                  : undefined
+                              }
+                            >
+                              {Number(value)?.toLocaleString()}
+                              {key === "incenctiveRate" ||
+                              key === "mentorAccProp" ||
+                              key === "mentorPayProp"
+                                ? " %"
+                                : ""}
                             </td>
                           </tr>
                         )
                       )}
-                  </>
-                ))}
+                    </tbody>
+                  ))}
+                </table>
+              </div>
 
-                <tr className="text-right">
+              <div className="col-3">
+                <table className={`${styles["vertical-table"]} mb-2`}>
+                  {salesResult.map((item, index) => (
+                    <tbody key={index}>
+                      {Object.entries(item.preTaxSalary || {}).map(
+                        ([key, value]) => (
+                          <tr key={key}>
+                            <td
+                              className="w-50"
+                              style={{
+                                backgroundColor: "#454545",
+                                color: "white",
+                              }}
+                            >
+                              {labels[key]}
+                            </td>
+                            <td
+                              className="text-right"
+                              style={{
+                                color: key === "finalIncentive" ? "orange" : "",
+                              }}
+                            >
+                              {Number(value)?.toLocaleString()}
+                            </td>
+                          </tr>
+                        )
+                      )}
+                    </tbody>
+                  ))}
+                </table>
+                <table className={styles["vertical-table"]}>
+                  {salesResult.map((item, index) => (
+                    <tbody key={index}>
+                      {Object.entries(item.afterTaxIncentive || {}).map(
+                        ([key, value]) => (
+                          <tr key={key}>
+                            <td
+                              className="w-50"
+                              style={{
+                                backgroundColor: "#454545",
+                                color: "white",
+                              }}
+                            >
+                              {labels[key]}
+                            </td>
+                            <td
+                              className="text-right"
+                              style={{
+                                color:
+                                  key === "finalAmount"
+                                    ? "orange"
+                                    : key === "sendAmount"
+                                    ? "#00ff00"
+                                    : "",
+                              }}
+                            >
+                              {Number(value)?.toLocaleString()}
+                            </td>
+                          </tr>
+                        )
+                      )}
+                    </tbody>
+                  ))}
+                </table>
+              </div>
+            </div>
+          ) : (
+            <div>
+              {/* 합계 매출, 지급수수료(+/-) 합 */}
+              <table className={`${styles["totalSum-table"]} table-bordered`}>
+                <thead>
+                  <tr className="text-center">
+                    <th>구분</th>
+                    <th>담당자명</th>
+                    <th>충전비(VAT+)</th>
+                    <th>충전비(VAT-)</th>
+                    <th>광고비(VAT-) 합계</th>
+                    <th>지급수수료(VAT-) 합계</th>
+                    <th>지급수수료(VAT+) 합계</th>
+                    <th>페이백(액) 합계</th>
+                    <th>총 매출 합계</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[mediaSum, viralSum].map((item) => (
+                    <>
+                      <tr className="text-right">
+                        <td className="text-center">합계</td>
+                        <td className="text-center">-</td>
+                        <td className="text-center">-</td>
+                        <td className="text-center">-</td>
+                        <td>
+                          {item?.data?.totalAdvCost?.toLocaleString() || 0}
+                        </td>
+                        <td>
+                          {item?.data?.totalPayVatExclude?.toLocaleString() ||
+                            0}
+                        </td>
+                        <td>
+                          {item?.data?.totalPayVatInclude?.toLocaleString() ||
+                            0}
+                        </td>
+                        <td>
+                          {item?.data?.totalPaybackAmount?.toLocaleString() ||
+                            0}
+                        </td>
+                        <td>
+                          {item?.data?.grandTotalSum?.toLocaleString() || 0}
+                        </td>
+                      </tr>
+                      {/* 상세 데이터 행 */}
+                      {Array.isArray(item?.data?.details) &&
+                        item?.data?.details?.map(
+                          (detailItem: any, detailIndex: number) => (
+                            <tr key={detailIndex} className="text-right">
+                              <td className="text-center">{item?.type}</td>
+                              <td className="text-center">
+                                {detailItem.marketerUid}
+                              </td>
+                              <td className="text-center">-</td>
+                              <td className="text-center">-</td>
+                              <td>
+                                {detailItem.advCostSum?.toLocaleString() || 0}
+                              </td>
+                              <td>
+                                {detailItem.payVatExcludeSum?.toLocaleString() ||
+                                  0}
+                              </td>
+                              <td>
+                                {detailItem.payVatIncludeSum?.toLocaleString() ||
+                                  0}
+                              </td>
+                              <td>
+                                {detailItem.paybackAmountSum?.toLocaleString() ||
+                                  0}
+                              </td>
+                              <td>
+                                {detailItem.totalSum?.toLocaleString() || 0}
+                              </td>
+                            </tr>
+                          )
+                        )}
+                    </>
+                  ))}
+
+                  <tr className="text-right">
                     <td className="text-center">카드수수료</td>
                     <td>-</td>
-                  <td>
-                    {cardSum?.totalChargeVatInclude?.toLocaleString() || 0}
-                  </td>
-                  <td>
-                    {cardSum?.totalChargeVatExclude?.toLocaleString() || 0}
-                  </td>
-                  <td className="text-center">-</td>
-                  <td>{cardSum?.totalPayVatInclude?.toLocaleString() || 0}</td>
-                  <td>{cardSum?.totalPayVatExclude?.toLocaleString() || 0}</td>
-                  <td className="text-center">-</td>
-                  <td className="text-center">-</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        )}
+                    <td>
+                      {cardSum?.totalChargeVatInclude?.toLocaleString() || 0}
+                    </td>
+                    <td>
+                      {cardSum?.totalChargeVatExclude?.toLocaleString() || 0}
+                    </td>
+                    <td className="text-center">-</td>
+                    <td>
+                      {cardSum?.totalPayVatInclude?.toLocaleString() || 0}
+                    </td>
+                    <td>
+                      {cardSum?.totalPayVatExclude?.toLocaleString() || 0}
+                    </td>
+                    <td className="text-center">-</td>
+                    <td className="text-center">-</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
 
-      {(activeFilter == "전체" || activeFilter == "매체") && mediaSum && (
+      {(activeFilter == "합계" || activeFilter == "매체") && mediaSum && (
         <>
-          <div className="d-flex ml-3 mb-3 mt-3">
-            <h5>매체</h5>
-            {(userRole === "system" || userRole === "admin") &&
-              activeFilter == "전체" && (
-                <div className="d-flex">
-                  <button
-                    className={styles["btn"]}
-                    onClick={() => {
-                      selectedMediaFiles.current?.click();
-                    }}
-                  >
-                    파일 등록
-                  </button>
-                  <input
-                    type="file"
-                    id="fileInput"
-                    accept=".xlsx, .xls"
-                    ref={selectedMediaFiles}
-                    style={{ display: "none" }}
-                    onChange={handleMediaFileUpload}
-                  />
-                </div>
-              )}
-          </div>
-          <table className={`${styles["horizontal-table"]} ml-3 mb-3`}>
-            <thead>
-              <tr className="text-center">
-                <th>년도/월</th>
-                {getAdjustedColumns("media").map((header, index) => (
-                  <th
-                    key={header.field}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, index)}
-                    onDrop={(e) => handleDrop(e, index)}
-                    onDragOver={handleDragOver}
-                    style={{
-                      position: "relative",
-                      cursor: "move",
-                      width: header.width,
-                    }}
-                  >
-                    <div
-                      className={styles["tooltip-container"]}
-                      onClick={() => toggleTooltip(header.field, "media")}
+          <div className="p-3">
+            <div className="d-flex mb-2">
+              <h5>매체</h5>
+              {(userRole === "system" || userRole === "admin") &&
+                activeFilter == "합계" && (
+                  <div className="d-flex">
+                    <button
+                      className={styles["btn"]}
+                      onClick={() => {
+                        selectedMediaFiles.current?.click();
+                      }}
                     >
-                      <span>{header.label}</span>
-                      <IoFilterSharp />
-                      {tooltipOpen?.field === header.field &&
-                        tooltipOpen?.table === "media" && (
-                          <div className={styles["tooltip"]}>
-                            <button
-                              onClick={() =>
-                                handleSort(header.field, "asc", "media")
-                              }
-                              className={styles["tooltip-button"]}
-                            >
-                              오름차순
-                            </button>
-                            <button
-                              onClick={() =>
-                                handleSort(header.field, "desc", "media")
-                              }
-                              className={styles["tooltip-button"]}
-                            >
-                              내림차순
-                            </button>
-                          </div>
-                        )}
-                    </div>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                className="text-center"
-                style={{ backgroundColor: "#666666", color: "white" }}
-              >
-                <td>합계</td>
-                <td></td>
-                <td></td>
-                <td></td>
-                <td></td>
-                <td></td>
-                <td className="text-right">
-                  {mediaSum.data?.totalAdvCost?.toLocaleString() || 0}
-                </td>
-                <td className="text-right">- %</td>
-                <td className="text-right">
-                  {mediaSum.data?.totalPayVatExclude?.toLocaleString() || 0}
-                </td>
-                <td className="text-right">
-                  {mediaSum.data?.totalPayVatInclude?.toLocaleString() || 0}
-                </td>
-                <td className="text-right">- %</td>
-                <td className="text-right">
-                  {mediaSum.data?.totalPaybackAmount?.toLocaleString() || 0}
-                </td>
-                <td className="text-right">
-                  {mediaSum.data?.grandTotalSum?.toLocaleString() || 0}
-                </td>
-              </tr>
-              {excelData &&
-                Array.isArray(excelData) &&
-                excelData.map((item: IMediaViral, rowIndex) => (
-                  <tr key={rowIndex} className="text-center">
-                    <td>
-                      {item.monthDate
-                        ? dayjs(item.monthDate).format("YYYY년 MM월")
-                        : ""}
-                    </td>
-                    {columns.map((column) => (
-                      <td
-                        key={column.field}
+                      파일 등록
+                    </button>
+                    <input
+                      type="file"
+                      id="fileInput"
+                      accept=".xlsx, .xls"
+                      ref={selectedMediaFiles}
+                      style={{ display: "none" }}
+                      onChange={handleMediaFileUpload}
+                    />
+                  </div>
+                )}
+            </div>
+            <div className={styles["container"]}>
+              <table className={`${styles["horizontal-table"]}`}>
+                <thead>
+                  <tr className="text-center">
+                    <th>년도/월</th>
+                    {getAdjustedColumns("media").map((header, index) => (
+                      <th
+                        key={header.field}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, index)}
+                        onDrop={(e) => handleDrop(e, index)}
+                        onDragOver={handleDragOver}
                         style={{
-                          backgroundColor:
-                            column.field === "media"
-                              ? getMediaColor(item.media || "")
-                              : "",
-                          color:
-                            Number(item.paybackRate) > 0
-                              ? !["total", "media"].includes(column.field)
-                                ? "#ff00ff"
-                                : "white"
-                              : "",
+                          position: "relative",
+                          cursor: "move",
+                          width: header.width,
                         }}
-                        className={
-                          [
-                            "marketerUid",
-                            "marketerName",
-                            "media",
-                            "clientName",
-                            "clientId",
-                          ].includes(column.field)
-                            ? "text-center"
-                            : "text-right"
-                        }
                       >
-                        {(() => {
-                          switch (column.field) {
-                            case "marketerUid":
-                              return item.marketerUid || "-";
-                            case "marketerName":
-                              return item.marketerName || "-";
-                            case "media":
-                              return item.media || "-";
-                            case "clientName":
-                              return item.clientName || "-";
-                            case "clientId":
-                              return item.clientId || "-";
-                            case "advCost":
-                              return item.advCost?.toLocaleString() || 0;
-                            case "commissionRate":
-                              return `${
-                                item.commissionRate?.toFixed(2) || "0.00"
-                              } %`;
-                            case "payVatExclude":
-                              return item.payVatExclude?.toLocaleString() || 0;
-                            case "payVatInclude":
-                              return item.payVatInclude?.toLocaleString() || 0;
-                            case "paybackRate":
-                              return `${
-                                item.paybackRate?.toFixed(2) || "0.00"
-                              } %`;
-                            case "paybackAmount":
-                              return item.paybackAmount?.toLocaleString() || 0;
-                            case "total":
-                              return item.total?.toLocaleString() || 0;
-                            default:
-                              return "-";
-                          }
-                        })()}
-                      </td>
+                        <div
+                          className={styles["tooltip-container"]}
+                          onClick={() => toggleTooltip(header.field, "media")}
+                        >
+                          <span>{header.label}</span>
+                          <IoFilterSharp />
+                          {tooltipOpen?.field === header.field &&
+                            tooltipOpen?.table === "media" && (
+                              <div className={styles["tooltip"]}>
+                                <button
+                                  onClick={() =>
+                                    handleSort(header.field, "asc", "media")
+                                  }
+                                  className={styles["tooltip-button"]}
+                                >
+                                  오름차순
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    handleSort(header.field, "desc", "media")
+                                  }
+                                  className={styles["tooltip-button"]}
+                                >
+                                  내림차순
+                                </button>
+                              </div>
+                            )}
+                        </div>
+                      </th>
                     ))}
                   </tr>
-                ))}
-            </tbody>
-          </table>
+                </thead>
+                <tbody>
+                  <tr
+                    className="text-center"
+                    style={{ backgroundColor: "#666666", color: "white" }}
+                  >
+                    <td>합계</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td className="text-right">
+                      {mediaSum.data?.totalAdvCost?.toLocaleString() || 0}
+                    </td>
+                    <td className="text-right">- %</td>
+                    <td className="text-right">
+                      {mediaSum.data?.totalPayVatExclude?.toLocaleString() || 0}
+                    </td>
+                    <td className="text-right">
+                      {mediaSum.data?.totalPayVatInclude?.toLocaleString() || 0}
+                    </td>
+                    <td className="text-right">- %</td>
+                    <td className="text-right">
+                      {mediaSum.data?.totalPaybackAmount?.toLocaleString() || 0}
+                    </td>
+                    <td className="text-right">
+                      {mediaSum.data?.grandTotalSum?.toLocaleString() || 0}
+                    </td>
+                  </tr>
+                  {excelData &&
+                    Array.isArray(excelData) &&
+                    excelData.map((item: IMediaViral, rowIndex) => (
+                      <tr key={rowIndex} className="text-center">
+                        <td>
+                          {item.monthDate
+                            ? dayjs(item.monthDate).format("YYYY년 MM월")
+                            : ""}
+                        </td>
+                        {columns.map((column) => (
+                          <td
+                            key={column.field}
+                            style={{
+                              backgroundColor:
+                                column.field === "media"
+                                  ? getMediaColor(item.media || "")
+                                  : "",
+                              color:
+                                Number(item.paybackRate) > 0
+                                  ? !["total", "media"].includes(column.field)
+                                    ? "#ff00ff"
+                                    : "white"
+                                  : "",
+                            }}
+                            className={
+                              [
+                                "marketerUid",
+                                "marketerName",
+                                "media",
+                                "clientName",
+                                "clientId",
+                              ].includes(column.field)
+                                ? "text-center"
+                                : "text-right"
+                            }
+                          >
+                            {(() => {
+                              switch (column.field) {
+                                case "marketerUid":
+                                  return item.marketerUid || "-";
+                                case "marketerName":
+                                  return item.marketerName || "-";
+                                case "media":
+                                  return item.media || "-";
+                                case "clientName":
+                                  return item.clientName || "-";
+                                case "clientId":
+                                  return item.clientId || "-";
+                                case "advCost":
+                                  return item.advCost?.toLocaleString() || 0;
+                                case "commissionRate":
+                                  return `${
+                                    item.commissionRate?.toFixed(2) || "0.00"
+                                  } %`;
+                                case "payVatExclude":
+                                  return (
+                                    item.payVatExclude?.toLocaleString() || 0
+                                  );
+                                case "payVatInclude":
+                                  return (
+                                    item.payVatInclude?.toLocaleString() || 0
+                                  );
+                                case "paybackRate":
+                                  return `${
+                                    item.paybackRate?.toFixed(2) || "0.00"
+                                  } %`;
+                                case "paybackAmount":
+                                  return (
+                                    item.paybackAmount?.toLocaleString() || 0
+                                  );
+                                case "total":
+                                  return item.total?.toLocaleString() || 0;
+                                default:
+                                  return "-";
+                              }
+                            })()}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </>
       )}
 
-      {(activeFilter == "전체" || activeFilter == "바이럴") &&
+      {(activeFilter == "합계" || activeFilter == "바이럴") &&
         viralData?.length > 0 && (
           <>
             <h5 className="mt-3 mb-3 ml-3">바이럴</h5>
@@ -1153,7 +1174,7 @@ const MediaTracking: React.FC = () => {
           </>
         )}
 
-      {(activeFilter === "전체" || activeFilter === "카드수수료") &&
+      {(activeFilter === "합계" || activeFilter === "카드수수료") &&
         cardSum && (
           <>
             <div className="mb-3 ml-3">

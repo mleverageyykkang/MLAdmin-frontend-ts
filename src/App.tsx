@@ -13,14 +13,16 @@ import AccountList from "./pages/AccountList/AccountList";
 import { AuthProvider } from "./providers/authProvider";
 import Deposit from "./pages/Deposit/Deposit";
 import MediaTracking from "pages/MediaTracking/MediaTracking";
-import Adjustment from "pages/Adjustment/Adjustment";
 import TotalTracking from "pages/TotalTracking/TotalTracking";
 import OtherWork from "pages/OtherWork/OtherWork";
+import Settle from "pages/Settle/Settle";
+import ProtectedRoute from "providers/ProtectedRoute";
 
 const dashboardRoutes = [
   {
     path: "/user",
     name: "사용자 관리",
+    icon: "GoPeople"
   },
   {
     path: "/otherwork",
@@ -30,14 +32,14 @@ const dashboardRoutes = [
     path: "/sheet",
     name: "계정 관리",
     items: [
-      // { path: "/1", name: "매체 수수료", layout: "/sheet" },
-      { path: "/1", name: "계정 리스트", layout: "/sheet" },
-      { path: "/2", name: "충전/세발/지출", layout: "/sheet" },
+      { path: "/accountlist", name: "계정 리스트", layout: "/sheet" },
+      { path: "/deposit", name: "충전/세발/지출", layout: "/sheet" },
     ],
   },
   {
     path: "/tracking",
     name: "매출 관리",
+    icon: "",
     items: [
       { path: "/media", name: "매체 트래킹", layout: "/tracking" },
       { path: "/settle", name: "광고수수료 정산서", layout: "/tracking" },
@@ -61,7 +63,9 @@ function Layout({ children }: { children: React.ReactNode }) {
             <div style={{ position: "fixed", width: "89%", zIndex: "9999" }}>
               <HeaderNavbar routes={dashboardRoutes} />
             </div>
-            <div style={{ marginTop: "74px" }}>{children}</div>
+            <div style={{ marginTop: "95px", backgroundColor: "#f2f5fa" }}>
+              {children}
+            </div>
           </div>
         </div>
       ) : (
@@ -79,15 +83,16 @@ function App() {
         <Layout>
           <Routes>
             <Route path="/" element={<LoginPage />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/user" element={<User />} />
-            <Route path="/otherwork" element={<OtherWork />} />
-            {/* <Route path="/sheet/1" element={<Commission />} /> */}
-            <Route path="/sheet/1" element={<AccountList />} />
-            <Route path="/sheet/2" element={<Deposit />} />
-            <Route path="/sheet/3" element={<Adjustment />} />
-            <Route path="/tracking/media" element={<MediaTracking />} />
-            <Route path="/tracking/total" element={<TotalTracking />} />
+            <Route element={<ProtectedRoute />}>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/user" element={<User />} />
+              <Route path="/otherwork" element={<OtherWork />} />
+              <Route path="/sheet/accountlist" element={<AccountList />} />
+              <Route path="/sheet/deposit" element={<Deposit />} />
+              <Route path="/tracking/media" element={<MediaTracking />} />
+              <Route path="/tracking/settle" element={<Settle />} />
+              <Route path="/tracking/total" element={<TotalTracking />} />
+            </Route>
           </Routes>
         </Layout>
       </AuthProvider>
