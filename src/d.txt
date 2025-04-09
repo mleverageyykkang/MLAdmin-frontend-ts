@@ -1,0 +1,530 @@
+<td>
+                         <input
+                           type="text"
+                           value={editedRow.companyName || ""}
+                           onChange={(e) => handleChange(e, "companyName")}
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="text"
+                           value={editedRow.advertiserName || ""}
+                           onChange={(e) => handleChange(e, "advertiserName")}
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="text"
+                           value={editedRow.residentNumber || ""}
+                           onChange={(e) => handleChange(e, "residentNumber")}
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="text"
+                           value={editedRow.managerName || ""}
+                           onChange={(e) => handleChange(e, "managerName")}
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="text"
+                           value={editedRow.phone || ""}
+                           onChange={(e) => handleChange(e, "phone")}
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="text"
+                           value={editedRow.businessReg || ""}
+                           onChange={(e) => handleChange(e, "businessReg")}
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="text"
+                           value={editedRow.businessNumber || ""}
+                           onChange={(e) => handleChange(e, "businessNumber")}
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="text"
+                           value={editedRow.businessAddress || ""}
+                           onChange={(e) => handleChange(e, "businessAddress")}
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="text"
+                           value={editedRow.businessType1 || ""}
+                           onChange={(e) => handleChange(e, "businessType1")}
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="text"
+                           value={editedRow.businessType2 || ""}
+                           onChange={(e) => handleChange(e, "businessType2")}
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="text"
+                           value={editedRow.companyEmail || ""}
+                           onChange={(e) => handleChange(e, "companyEmail")}
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="text"
+                           value={editedRow.marketerEmail || ""}
+                           onChange={(e) => handleChange(e, "marketerEmail")}
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="number"
+                           value={editedRow.spending || 0}
+                           onChange={(e) => handleChange(e, "spending")}
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="number"
+                           value={editedRow.point || 0}
+                           onChange={(e) => handleChange(e, "point")}
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="date"
+                           value={
+                             editedRow.transferDate
+                               ? dayjs(editedRow.transferDate).format(
+                                   "YYYY-MM-DD"
+                                 )
+                               : ""
+                           }
+                           onChange={(e) => handleChange(e, "transferDate")}
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="text"
+                           value={editedRow.taxInvoiceInfo || ""}
+                           onChange={(e) => handleChange(e, "taxInvoiceInfo")}
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="number"
+                           value={editedRow.payback?.naver || 0}
+                           onChange={(e) =>
+                             handleNestedFieldChange(e, "payback", "naver")
+                           }
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="number"
+                           value={editedRow.payback?.kakao || 0}
+                           onChange={(e) =>
+                             handleNestedFieldChange(e, "payback", "kakao")
+                           }
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="number"
+                           value={editedRow.payback?.google || 0}
+                           onChange={(e) =>
+                             handleNestedFieldChange(e, "payback", "google")
+                           }
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="number"
+                           value={editedRow.payback?.carot || 0}
+                           onChange={(e) =>
+                             handleNestedFieldChange(e, "payback", "carot")
+                           }
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="number"
+                           value={editedRow.payback?.etc || 0}
+                           onChange={(e) =>
+                             handleNestedFieldChange(e, "payback", "etc")
+                           }
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="text"
+                           value={editedRow.note || ""}
+                           onChange={(e) => handleChange(e, "note")}
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="date"
+                           value={
+                             editedRow.leaveDate
+                               ? dayjs(editedRow.leaveDate).format("YYYY-MM-DD")
+                               : ""
+                           }
+                           onChange={(e) => handleChange(e, "leaveDate")}
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="text"
+                           value={editedRow.leaveReason || ""}
+                           onChange={(e) => handleChange(e, "leaveReason")}
+                         />
+                       </td>
+                       <td></td>
+                       <td>
+                         <input
+                           type="text"
+                           value={editedRow.mediaAccount?.naver?.id || ""}
+                           onChange={(e) =>
+                             handleNestedFieldChange(
+                               e,
+                               "mediaAccount",
+                               "naver",
+                               "id"
+                             )
+                           }
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="text"
+                           value={editedRow.mediaAccount?.naver?.pwd || ""}
+                           onChange={(e) =>
+                             handleNestedFieldChange(
+                               e,
+                               "mediaAccount",
+                               "naver",
+                               "pwd"
+                             )
+                           }
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="text"
+                           value={
+                             editedRow.mediaAccount?.naver?.naverNumber || ""
+                           }
+                           onChange={(e) =>
+                             handleNestedFieldChange(
+                               e,
+                               "mediaAccount",
+                               "naver",
+                               "naverNumber"
+                             )
+                           }
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="text"
+                           value={editedRow.mediaAccount?.gfa?.id || ""}
+                           onChange={(e) =>
+                             handleNestedFieldChange(
+                               e,
+                               "mediaAccount",
+                               "gfa",
+                               "id"
+                             )
+                           }
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="text"
+                           value={editedRow.mediaAccount?.gfa?.pwd || ""}
+                           onChange={(e) =>
+                             handleNestedFieldChange(
+                               e,
+                               "mediaAccount",
+                               "gfa",
+                               "pwd"
+                             )
+                           }
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="text"
+                           value={editedRow.mediaAccount?.gfa?.gfaNumber || ""}
+                           onChange={(e) =>
+                             handleNestedFieldChange(
+                               e,
+                               "mediaAccount",
+                               "gfa",
+                               "gfaNumber"
+                             )
+                           }
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="text"
+                           value={editedRow.mediaAccount?.kakao?.id || ""}
+                           onChange={(e) =>
+                             handleNestedFieldChange(
+                               e,
+                               "mediaAccount",
+                               "kakao",
+                               "id"
+                             )
+                           }
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="text"
+                           value={editedRow.mediaAccount?.kakao?.pwd || ""}
+                           onChange={(e) =>
+                             handleNestedFieldChange(
+                               e,
+                               "mediaAccount",
+                               "kakao",
+                               "pwd"
+                             )
+                           }
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="text"
+                           value={
+                             editedRow.mediaAccount?.kakao?.kakaoNumber || ""
+                           }
+                           onChange={(e) =>
+                             handleNestedFieldChange(
+                               e,
+                               "mediaAccount",
+                               "kakao",
+                               "kakaoNumber"
+                             )
+                           }
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="text"
+                           value={
+                             editedRow.mediaAccount?.kakao?.momentNumber || ""
+                           }
+                           onChange={(e) =>
+                             handleNestedFieldChange(
+                               e,
+                               "mediaAccount",
+                               "kakao",
+                               "momentNumber"
+                             )
+                           }
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="text"
+                           value={editedRow.mediaAccount?.google?.id || ""}
+                           onChange={(e) =>
+                             handleNestedFieldChange(
+                               e,
+                               "mediaAccount",
+                               "google",
+                               "id"
+                             )
+                           }
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="text"
+                           value={editedRow.mediaAccount?.google?.pwd || ""}
+                           onChange={(e) =>
+                             handleNestedFieldChange(
+                               e,
+                               "mediaAccount",
+                               "google",
+                               "pwd"
+                             )
+                           }
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="text"
+                           value={editedRow.mediaAccount?.carot?.id || ""}
+                           onChange={(e) =>
+                             handleNestedFieldChange(
+                               e,
+                               "mediaAccount",
+                               "carot",
+                               "id"
+                             )
+                           }
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="text"
+                           value={editedRow.mediaAccount?.carot?.pwd || ""}
+                           onChange={(e) =>
+                             handleNestedFieldChange(
+                               e,
+                               "mediaAccount",
+                               "carot",
+                               "pwd"
+                             )
+                           }
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="text"
+                           value={editedRow.mediaAccount?.etc?.id || ""}
+                           onChange={(e) =>
+                             handleNestedFieldChange(
+                               e,
+                               "mediaAccount",
+                               "etc",
+                               "id"
+                             )
+                           }
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="text"
+                           value={editedRow.mediaAccount?.etc?.pwd || ""}
+                           onChange={(e) =>
+                             handleNestedFieldChange(
+                               e,
+                               "mediaAccount",
+                               "etc",
+                               "pwd"
+                             )
+                           }
+                         />
+                       </td>
+                       <td className="text-center">
+                         <input
+                           type="checkbox"
+                           checked={editedRow.isAssisted || false}
+                           onChange={(e) => handleChange(e, "isAssisted")}
+                         />
+                       </td>
+                       <td>
+                         <input
+                           type="text"
+                           value={editedRow.mentor || ""}
+                           onChange={(e) => handleChange(e, "mentor")}
+                         />
+                       </td>
+
+
+{field === "paymentType" ? (
+                      <select
+                        className="w-100"
+                        value={value?.toLocaleString("") || ""}
+                        onChange={(e) =>
+                          handleInputChange(
+                            field as keyof IDeposit,
+                            e.target.value
+                          )
+                        }
+                      >
+                        <option value="">선택</option>
+                        <option value={paymentType.CARD}>카드</option>
+                        <option value={paymentType.TRANSFER}>계좌이체</option>
+                      </select>
+                    ) : field === "processType" ? (
+                      <select
+                        className="w-100"
+                        value={value?.toLocaleString("") || ""}
+                        onChange={(e) =>
+                          handleInputChange(
+                            field as keyof IDeposit,
+                            e.target.value
+                          )
+                        }
+                      >
+                        <option value="">선택</option>
+                        <option value={processType.DEFAULT}>기본</option>
+                        <option value={processType.PRECHARGE}>선충전</option>
+                        <option value={processType.DEDUCT}>차감</option>
+                        <option value={processType.REMITPAYCO}>
+                          송금/결제(회사)
+                        </option>
+                        <option value={processType.REMITPAYDE}>
+                          송금/결제(차감)
+                        </option>
+                      </select>
+                    ) : field === "deductAmount" ? (
+                      <input
+                        type="number"
+                        className="w-100"
+                        value={value?.toLocaleString("") || 0}
+                        disabled={
+                          newDeposit.processType !== processType.DEDUCT &&
+                          newDeposit.processType !== processType.REMITPAYDE
+                        } // 조건부 비활성화
+                        onChange={(e) =>
+                          handleInputChange(
+                            field as keyof IDeposit,
+                            parseInt(e.target.value.replace(/,/g, "")) || 0
+                          )
+                        }
+                      />
+                    ) : field === "depositDueDate" ? (
+                      <input
+                        type="date"
+                        className="w-100 text-center"
+                        value={
+                          value instanceof Date
+                            ? dayjs(value).format("YYYY-MM-DD")
+                            : value || ""
+                        }
+                        disabled={
+                          newDeposit.processType !== processType.PRECHARGE
+                        } // 조건부 비활성화
+                        onChange={(e) =>
+                          handleInputChange(
+                            field as keyof IDeposit,
+                            new Date(e.target.value)
+                          )
+                        }
+                      />
+                    ) : (
+                      <input
+                        type={
+                          field === "progressDate" || field === "depositDate"
+                            ? "date"
+                            : "text"
+                        }
+                        className="w-100"
+                        value={
+                          value instanceof Date
+                            ? dayjs(value).format("YYYY-MM-DD")
+                            : value?.toLocaleString() || ""
+                        }
+                        onChange={(e) =>
+                          handleInputChange(
+                            field as keyof IDeposit,
+                            field === "depositAmount"
+                              ? parseInt(e.target.value.replace(/,/g, "")) || 0
+                              : e.target.value
+                          )
+                        }
+                      />
+                    )}

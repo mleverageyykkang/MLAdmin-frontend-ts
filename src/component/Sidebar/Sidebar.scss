@@ -1,0 +1,116 @@
+.sidebar {
+  width: 11%;
+  background-color: #181f47;
+  color: #fff;
+  height: 100vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  padding: 20px;
+  background-color: #101634;
+  border-bottom: 1px solid #e9e9e9;
+}
+
+.sidebar-logo-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-text {
+  display: flex;
+  text-decoration: none;
+  flex-direction: column;
+  font-size: 22px;
+  font-weight: bold;
+  margin-left: 10px; /* 로고와 텍스트 사이 간격 */
+  color: white; /* 텍스트 색상 */
+  width: 100%;
+  text-align: left;
+}
+.sidebar-text span:hover{
+  text-decoration: none;
+}
+.sidebar-text span:last-child{
+  color:#bfbfbf
+}
+
+.sidebar-logo {
+  width: 44px;
+}
+.sidebar-textlink:hover{
+  text-decoration: none;
+}
+
+.sidebar-nav {
+  flex: 1;
+  margin-top: 50px;
+}
+.sidebar-text-line {
+  line-height: 1.2; /* 텍스트 간 간격 조정 */
+}
+
+.sidebar-title {
+  font-size: 14px;
+  font-weight: bold;
+  margin-top: 10px;
+  margin-bottom: 5px;
+  color: #ffa500;
+}
+
+.sidebar-item {
+  margin-bottom: 10px;
+}
+
+.sidebar-link {
+  text-decoration: none;
+  color: #fff;
+  font-size: 15px;
+  padding: 10px;
+  width: 100%;
+  display: block;
+  gap: 2px;
+  &:hover{
+    text-decoration: none;
+    color: #ffa500;
+    font-weight: bold;
+  }
+}
+
+.sidebar-link.active {
+  background-color: #ffa500;
+  color: #000;
+  font-weight: bold;
+}
+
+.sidebar-group ul {
+  list-style: none;
+  padding-left: 20px;
+  margin: 0;
+}
+
+.sidebar-group li {
+  margin: 10px;
+}
+
+.sidebar-group li .sidebar-link {
+  font-size: 13px;
+  color: #bbb;
+  &:hover{
+    text-decoration: none;
+    color: #ffa500;
+    font-weight: bold;
+  }
+}
+
+.sidebar-group li .sidebar-link.active {
+  background-color: transparent;
+  color: #ffa500;
+  font-weight: bold;
+}
