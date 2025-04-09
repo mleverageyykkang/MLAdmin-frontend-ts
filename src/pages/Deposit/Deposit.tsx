@@ -1096,7 +1096,7 @@ const Deposit: React.FC = () => {
                     </select>
                   ) : field === "deductAmount" ? (
                     <input
-                      type="number"
+                      type="text"
                       className="w-100"
                       value={value?.toLocaleString() || 0}
                       disabled={
